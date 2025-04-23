@@ -1,0 +1,76 @@
+// Flood Monitoring System
+digraph "Flow Diagram" {
+	Start [label=Start fillcolor="#90EE90" shape=oval style=filled]
+	End [label=End fillcolor="#90EE90" shape=oval style=filled]
+	Login [label="User Enters Credentials" shape=rectangle]
+	ValidateLogin [label="Validate Login/Register
+(API: /api/login/ or /api/register/)" shape=diamond]
+	Token [label="Generate Token and Store" fillcolor="#FFC107" shape=rectangle style=filled]
+	LoginFail [label="Invalid Credentials" shape=rectangle]
+	Dashboard [label="Access Dashboard" shape=rectangle]
+	FetchUser [label="Fetch User Info
+(API: /api/user-info/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	FetchSub [label="Fetch Subscription Status
+(API: /subscription/status/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	NoSubscription [label="Not Subscribed, Prompt User" shape=rectangle]
+	RealTimeData [label="Fetch Real-time Data" shape=rectangle]
+	WaterLevels [label="Fetch Water Levels
+(API: /monitoring/water-levels/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	Humidity [label="Fetch Humidity
+(API: /monitoring/humidity/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	Temperature [label="Fetch Temperature
+(API: /monitoring/temperature/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	DisplayData [label="Display Real-time Data on Dashboard
+(Chart.js)" shape=rectangle]
+	PredictForm [label="Submit Prediction Form
+(Start/End Time)" shape=rectangle]
+	RunPrediction [label="Run Prediction (Linear Regression)
+(API: /api/predict/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	NoData [label="No Data Available for Prediction" shape=rectangle]
+	DisplayPrediction [label="Display Predicted Results" shape=rectangle]
+	FloodMap [label="Display Flood Monitoring Map
+(Leaflet.js)" shape=rectangle]
+	FetchFloodData [label="Fetch Flood Data
+(API: /api/flood-monitoring/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	SMSAlert [label="Send SMS Alert
+(AfricasTalking/AWS SNS)" shape=rectangle]
+	Start -> Login
+	Login -> ValidateLogin
+	ValidateLogin -> Token [label=Valid]
+	ValidateLogin -> LoginFail [label=Invalid]
+	Token -> Dashboard
+	LoginFail -> End
+	Dashboard -> FetchUser
+	FetchUser -> FetchSub
+	FetchSub -> NoSubscription [label="Not Subscribed"]
+	FetchSub -> RealTimeData [label=Subscribed]
+	RealTimeData -> WaterLevels
+	WaterLevels -> Humidity
+	Humidity -> Temperature
+	Temperature -> DisplayData
+	DisplayData -> PredictForm
+	PredictForm -> RunPrediction
+	RunPrediction -> DisplayPrediction [label="Data Available"]
+	RunPrediction -> NoData [label="No Data"]
+	DisplayPrediction -> End
+	DisplayData -> FloodMap
+	FloodMap -> FetchFloodData
+	FetchFloodData -> End
+	RunPrediction -> SMSAlert [label="Critical Flood Level"]
+	SMSAlert -> End
+	FetchUser -> FetchSub [label="Auth Required" color=red penwidth=2]
+	FetchSub -> RealTimeData [label="Auth Required" color=red penwidth=2]
+	RealTimeData -> WaterLevels [color=red penwidth=2]
+	WaterLevels -> Humidity [color=red penwidth=2]
+	Humidity -> Temperature [color=red penwidth=2]
+	Temperature -> DisplayData [color=red penwidth=2]
+	PredictForm -> RunPrediction [color=red penwidth=2]
+	FloodMap -> FetchFloodData [color=red penwidth=2]
+}

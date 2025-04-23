@@ -1,0 +1,66 @@
+// Subscription-based Dashboard Access
+digraph "Dashboard Flow Diagram" {
+	Start [label=Start fillcolor="#90EE90" shape=oval style=filled]
+	End [label=End fillcolor="#90EE90" shape=oval style=filled]
+	Login [label="User Logs In" shape=rectangle]
+	CheckSub [label="Check Subscription Tier" shape=diamond]
+	FreeDashboard [label="Free Tier Dashboard
+Basic Data Access" fillcolor="#87CEEB" shape=rectangle style=filled]
+	FreeWaterLevels [label="Water Levels
+(/monitoring/water-levels/)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	FreeHumidity [label="Humidity
+(/monitoring/humidity/)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	FreeTemperature [label="Temperature
+(/monitoring/temperature/)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	FreeRestricted [label="Restricted Access
+(No Predictions or Flood Monitoring)" shape=rectangle]
+	CorporateDashboard [label="Corporate Tier Dashboard
+Advanced Data Access" fillcolor="#FFA500" shape=rectangle style=filled]
+	CorporateWaterLevels [label="Water Levels
+(/monitoring/water-levels/)" fillcolor="#FFA500" shape=rectangle style=filled]
+	CorporateHumidity [label="Humidity
+(/monitoring/humidity/)" fillcolor="#FFA500" shape=rectangle style=filled]
+	CorporateTemperature [label="Temperature
+(/monitoring/temperature/)" fillcolor="#FFA500" shape=rectangle style=filled]
+	CorpPrediction [label="Run Prediction (Linear Regression)
+(/monitoring/linear-regression/)" fillcolor="#FFA500" shape=rectangle style=filled]
+	CorpRestricted [label="Restricted Access
+(No Map Visualization)" shape=rectangle]
+	PremiumDashboard [label="Premium Tier Dashboard
+Full Data Access" fillcolor="#FFD700" shape=rectangle style=filled]
+	PremiumWaterLevels [label="Water Levels
+(/monitoring/water-levels/)" fillcolor="#FFD700" shape=rectangle style=filled]
+	PremiumHumidity [label="Humidity
+(/monitoring/humidity/)" fillcolor="#FFD700" shape=rectangle style=filled]
+	PremiumTemperature [label="Temperature
+(/monitoring/temperature/)" fillcolor="#FFD700" shape=rectangle style=filled]
+	PremiumPrediction [label="Run Prediction (Linear Regression)
+(/monitoring/linear-regression/)" fillcolor="#FFD700" shape=rectangle style=filled]
+	FloodMap [label="Flood Monitoring Map
+(/api/flood-monitoring/)" fillcolor="#FFD700" shape=rectangle style=filled]
+	SMSAlert [label="Send SMS Alert
+(AfricasTalking/AWS SNS)" fillcolor="#FFD700" shape=rectangle style=filled]
+	Start -> Login
+	Login -> CheckSub
+	CheckSub -> FreeDashboard [label="Free Tier"]
+	FreeDashboard -> FreeWaterLevels
+	FreeWaterLevels -> FreeHumidity
+	FreeHumidity -> FreeTemperature
+	FreeTemperature -> FreeRestricted
+	FreeRestricted -> End
+	CheckSub -> CorporateDashboard [label="Corporate Tier"]
+	CorporateDashboard -> CorporateWaterLevels
+	CorporateWaterLevels -> CorporateHumidity
+	CorporateHumidity -> CorporateTemperature
+	CorporateTemperature -> CorpPrediction
+	CorpPrediction -> CorpRestricted
+	CorpRestricted -> End
+	CheckSub -> PremiumDashboard [label="Premium Tier"]
+	PremiumDashboard -> PremiumWaterLevels
+	PremiumWaterLevels -> PremiumHumidity
+	PremiumHumidity -> PremiumTemperature
+	PremiumTemperature -> PremiumPrediction
+	PremiumPrediction -> FloodMap
+	FloodMap -> SMSAlert
+	SMSAlert -> End
+}

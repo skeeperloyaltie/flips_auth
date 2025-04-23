@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Add New Water Level Entry</title>
+  </head>
+  <body>
+    <div class="container mt-5">
+      <h1 class="mb-4">Add New Water Level Entry</h1>
+      <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label for="rig_id" class="form-label">Rig</label>
+          <select id="rig_id" name="rig_id" class="form-select">
+            {% for rig in rigs %}
+            <option value="{{ rig.id }}">{{ rig.sensor_id }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="level" class="form-label">Water Level</label>
+          <input type="text" class="form-control" id="level" name="level" required>
+        </div>
+        <div class="mb-3">
+          <label for="temperature" class="form-label">Temperature</label>
+          <input type="text" class="form-control" id="temperature" name="temperature" required>
+        </div>
+        <div class="mb-3">
+          <label for="humidity" class="form-label">Humidity</label>
+          <input type="text" class="form-control" id="humidity" name="humidity" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </form>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

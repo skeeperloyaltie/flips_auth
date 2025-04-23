@@ -1,0 +1,107 @@
+// Flood Monitoring System
+digraph "Flow Diagram" {
+	Start [label=Start fillcolor="#90EE90" shape=oval style=filled]
+	End [label=End fillcolor="#90EE90" shape=oval style=filled]
+	Login [label="User Enters Credentials" shape=rectangle]
+	ValidateLogin [label="Validate Login/Register
+(API: /api/login/ or /api/register/)" shape=diamond]
+	Token [label="Generate Token and Store" fillcolor="#FFC107" shape=rectangle style=filled]
+	LoginFail [label="Invalid Credentials" shape=rectangle]
+	Dashboard [label="Access Dashboard" shape=rectangle]
+	FetchUser [label="Fetch User Info
+(API: /api/user-info/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	FetchSub [label="Fetch Subscription Status
+(API: /subscription/status/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	NoSubscription [label="Not Subscribed, Prompt User" shape=rectangle]
+	RealTimeData [label="Fetch Real-time Data" shape=rectangle]
+	WaterLevels [label="Fetch Water Levels
+(API: /monitoring/water-levels/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	Humidity [label="Fetch Humidity
+(API: /monitoring/humidity/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	Temperature [label="Fetch Temperature
+(API: /monitoring/temperature/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	DisplayData [label="Display Real-time Data on Dashboard
+(Chart.js)" shape=rectangle]
+	PredictForm [label="Submit Prediction Form
+(Start/End Time)" shape=rectangle]
+	LinearReg [label="Run Linear Regression
+(API: /api/predict/)
+[Requires Auth]" fillcolor="#FFD700" shape=rectangle style=filled]
+	PolyReg [label="Run Polynomial Regression" fillcolor="#FFD700" shape=rectangle style=filled]
+	TimeSeries [label="Run Time Series (ARIMA/SARIMA)" fillcolor="#FFD700" shape=rectangle style=filled]
+	DecisionTree [label="Run Decision Trees" fillcolor="#FFD700" shape=rectangle style=filled]
+	RandomForest [label="Run Random Forest" fillcolor="#FFD700" shape=rectangle style=filled]
+	SVM [label="Run Support Vector Machines (SVM)" fillcolor="#FFD700" shape=rectangle style=filled]
+	KNN [label="Run K-Nearest Neighbors (KNN)" fillcolor="#FFD700" shape=rectangle style=filled]
+	NeuralNet [label="Run Neural Networks" fillcolor="#FFD700" shape=rectangle style=filled]
+	Geospatial [label="Run Geospatial Models
+(GIS + GEE)" fillcolor="#FFD700" shape=rectangle style=filled]
+	Kalman [label="Run Kalman Filter" fillcolor="#FFD700" shape=rectangle style=filled]
+	ARIMAX [label="Run ARIMAX" fillcolor="#FFD700" shape=rectangle style=filled]
+	NoData [label="No Data Available for Prediction" shape=rectangle]
+	DisplayPrediction [label="Display Predicted Results" shape=rectangle]
+	FloodMap [label="Display Flood Monitoring Map
+(Leaflet.js)" shape=rectangle]
+	FetchFloodData [label="Fetch Flood Data
+(API: /api/flood-monitoring/)
+[Requires Auth]" fillcolor="#87CEEB" shape=rectangle style=filled]
+	SMSAlert [label="Send SMS Alert
+(AfricasTalking/AWS SNS)" shape=rectangle]
+	Start -> Login
+	Login -> ValidateLogin
+	ValidateLogin -> Token [label=Valid]
+	ValidateLogin -> LoginFail [label=Invalid]
+	Token -> Dashboard
+	LoginFail -> End
+	Dashboard -> FetchUser
+	FetchUser -> FetchSub
+	FetchSub -> NoSubscription [label="Not Subscribed"]
+	FetchSub -> RealTimeData [label=Subscribed]
+	RealTimeData -> WaterLevels
+	WaterLevels -> Humidity
+	Humidity -> Temperature
+	Temperature -> DisplayData
+	DisplayData -> PredictForm
+	PredictForm -> LinearReg [label="Basic Prediction (Linear)"]
+	PredictForm -> PolyReg [label="Advanced Nonlinear Prediction"]
+	PredictForm -> TimeSeries [label="Time Series Forecasting"]
+	PredictForm -> DecisionTree [label="Decision Trees"]
+	PredictForm -> RandomForest [label="Random Forest"]
+	PredictForm -> SVM [label=SVM]
+	PredictForm -> KNN [label="K-Nearest Neighbors"]
+	PredictForm -> NeuralNet [label="Neural Networks"]
+	PredictForm -> Geospatial [label="Geospatial Modeling"]
+	PredictForm -> Kalman [label="Kalman Filter"]
+	PredictForm -> ARIMAX [label=ARIMAX]
+	LinearReg -> DisplayPrediction [label="Data Available"]
+	PolyReg -> DisplayPrediction [label="Data Available"]
+	TimeSeries -> DisplayPrediction [label="Data Available"]
+	DecisionTree -> DisplayPrediction [label="Data Available"]
+	RandomForest -> DisplayPrediction [label="Data Available"]
+	SVM -> DisplayPrediction [label="Data Available"]
+	KNN -> DisplayPrediction [label="Data Available"]
+	NeuralNet -> DisplayPrediction [label="Data Available"]
+	Geospatial -> DisplayPrediction [label="Data Available"]
+	Kalman -> DisplayPrediction [label="Data Available"]
+	ARIMAX -> DisplayPrediction [label="Data Available"]
+	LinearReg -> NoData [label="No Data"]
+	DisplayPrediction -> End
+	DisplayData -> FloodMap
+	FloodMap -> FetchFloodData
+	FetchFloodData -> End
+	LinearReg -> SMSAlert [label="Critical Flood Level"]
+	SMSAlert -> End
+	FetchUser -> FetchSub [label="Auth Required" color=red penwidth=2]
+	FetchSub -> RealTimeData [label="Auth Required" color=red penwidth=2]
+	RealTimeData -> WaterLevels [color=red penwidth=2]
+	WaterLevels -> Humidity [color=red penwidth=2]
+	Humidity -> Temperature [color=red penwidth=2]
+	Temperature -> DisplayData [color=red penwidth=2]
+	PredictForm -> LinearReg [color=red penwidth=2]
+	FloodMap -> FetchFloodData [color=red penwidth=2]
+}

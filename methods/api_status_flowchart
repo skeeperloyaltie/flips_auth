@@ -1,0 +1,21 @@
+// API Health Check Flowchart
+digraph "API Status Flowchart" {
+	Start [label=Start fillcolor="#ADD8E6" shape=oval style=filled]
+	End [label=End fillcolor="#ADD8E6" shape=oval style=filled]
+	"User Info API" [label="User Info API
+(Not Working)" fillcolor="#FF6347" shape=ellipse style=filled]
+	Start -> "User Info API"
+	"Subscription API" [label="Subscription API
+(Not Working)" fillcolor="#FF6347" shape=ellipse style=filled]
+	Start -> "Subscription API"
+	"Payments API" [label="Payments API
+(Not Working)" fillcolor="#FF6347" shape=ellipse style=filled]
+	Start -> "Payments API"
+	"SMS Module" [label="SMS Module
+(Not Working)" fillcolor="#FF6347" shape=ellipse style=filled]
+	Start -> "SMS Module"
+	"Dashboard API" [label="Dashboard API
+(Not Working)" fillcolor="#FF6347" shape=ellipse style=filled]
+	Start -> "Dashboard API"
+	"Dashboard API" -> End
+}

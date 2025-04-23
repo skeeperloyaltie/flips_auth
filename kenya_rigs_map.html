@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+    
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap-glyphicons.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_4d30fdeb7a14e46a14c7d8d5d05a7d30 {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+        
+</head>
+<body>
+    
+    
+            <div class="folium-map" id="map_4d30fdeb7a14e46a14c7d8d5d05a7d30" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_4d30fdeb7a14e46a14c7d8d5d05a7d30 = L.map(
+                "map_4d30fdeb7a14e46a14c7d8d5d05a7d30",
+                {
+                    center: [-1.2921, 36.8219],
+                    crs: L.CRS.EPSG3857,
+                    zoom: 6,
+                    zoomControl: true,
+                    preferCanvas: false,
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_8f8956367dd0e5ef69c993a267eb5777 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
+            );
+        
+    
+            tile_layer_8f8956367dd0e5ef69c993a267eb5777.addTo(map_4d30fdeb7a14e46a14c7d8d5d05a7d30);
+        
+    
+            var polygon_d7331543783758f4ad55b61d08e9ea0d = L.polygon(
+                [[5.0, 34.816], [5.0, 41.0], [-4.0, 41.0], [-4.0, 34.816], [5.0, 34.816]],
+                {"bubblingMouseEvents": true, "color": "green", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "lightgreen", "fillOpacity": 0.5, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 1.0, "smoothFactor": 1.0, "stroke": true, "weight": 3}
+            ).addTo(map_4d30fdeb7a14e46a14c7d8d5d05a7d30);
+        
+    
+            var marker_d6d1b8d74811ff230564abfc3446a38a = L.marker(
+                [-0.07842642962340313, 38.95772447774984],
+                {}
+            ).addTo(map_4d30fdeb7a14e46a14c7d8d5d05a7d30);
+        
+    
+            var icon_a4164dab9954b080817925c364e0f684 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_d6d1b8d74811ff230564abfc3446a38a.setIcon(icon_a4164dab9954b080817925c364e0f684);
+        
+    
+        var popup_a03d0c0ca60b9df70b2049e74cad2c86 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_f888a076d600e6008e94574e21d8cce3 = $(`<div id="html_f888a076d600e6008e94574e21d8cce3" style="width: 100.0%; height: 100.0%;">Tana Upper - Kone</div>`)[0];
+                popup_a03d0c0ca60b9df70b2049e74cad2c86.setContent(html_f888a076d600e6008e94574e21d8cce3);
+            
+        
+
+        marker_d6d1b8d74811ff230564abfc3446a38a.bindPopup(popup_a03d0c0ca60b9df70b2049e74cad2c86)
+        ;
+
+        
+    
+    
+            var marker_4df7ac34589fac9bbad26e6d6ae48c15 = L.marker(
+                [-0.2961679840764966, 39.53842118297724],
+                {}
+            ).addTo(map_4d30fdeb7a14e46a14c7d8d5d05a7d30);
+        
+    
+            var icon_c57ad6f83e9cf1da9273d5581fc94cdb = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_4df7ac34589fac9bbad26e6d6ae48c15.setIcon(icon_c57ad6f83e9cf1da9273d5581fc94cdb);
+        
+    
+        var popup_4d9aae772507ffb3393ed4f31e2a708b = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_e73333353f5181d4148cf5708d7354f4 = $(`<div id="html_e73333353f5181d4148cf5708d7354f4" style="width: 100.0%; height: 100.0%;">Tana Center - Sankuri</div>`)[0];
+                popup_4d9aae772507ffb3393ed4f31e2a708b.setContent(html_e73333353f5181d4148cf5708d7354f4);
+            
+        
+
+        marker_4df7ac34589fac9bbad26e6d6ae48c15.bindPopup(popup_4d9aae772507ffb3393ed4f31e2a708b)
+        ;
+
+        
+    
+    
+            var marker_cd057608c6ee1dd247514004bde09727 = L.marker(
+                [-0.5678196253853346, 39.68674985306361],
+                {}
+            ).addTo(map_4d30fdeb7a14e46a14c7d8d5d05a7d30);
+        
+    
+            var icon_c67010570e2974f64bb57a3b303b24b4 = L.AwesomeMarkers.icon(
+                {"extraClasses": "fa-rotate-0", "icon": "info-sign", "iconColor": "white", "markerColor": "blue", "prefix": "glyphicon"}
+            );
+            marker_cd057608c6ee1dd247514004bde09727.setIcon(icon_c67010570e2974f64bb57a3b303b24b4);
+        
+    
+        var popup_c90e6dafd8d97b51fef22f450a7992ea = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_1a904e1f29bfe954269910fdbc057d38 = $(`<div id="html_1a904e1f29bfe954269910fdbc057d38" style="width: 100.0%; height: 100.0%;">Tana Lower - Sombo</div>`)[0];
+                popup_c90e6dafd8d97b51fef22f450a7992ea.setContent(html_1a904e1f29bfe954269910fdbc057d38);
+            
+        
+
+        marker_cd057608c6ee1dd247514004bde09727.bindPopup(popup_c90e6dafd8d97b51fef22f450a7992ea)
+        ;
+
+        
+    
+</script>
+</html>

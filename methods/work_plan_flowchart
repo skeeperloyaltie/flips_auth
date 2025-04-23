@@ -1,0 +1,85 @@
+// James and Godfrey Work Plan
+digraph "Work Plan" {
+	Start [label=Start fillcolor="#90EE90" shape=oval style=filled]
+	End [label=End fillcolor="#90EE90" shape=oval style=filled]
+	PaymentModuleUI [label="Payment Module UI Design
+(James, Week 1)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	PaymentAPI [label="Payment API Integration
+(James, Week 2)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	PaymentAPI_UseCase [label="Connect UI to API, Token Management
+(Secure Payment)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	AuthUI [label="User Authentication UI Design
+(James, Week 1)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	AuthUI_UseCase [label="Design Login/Registration Form
+(Token Storage)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	SubscriptionUI [label="Subscription Management UI
+(James, Week 2)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	SubscriptionUI_UseCase [label="Plan Selection, Subscription Status" fillcolor="#87CEEB" shape=rectangle style=filled]
+	DashboardUI [label="Real-time Data Dashboard UI
+(James, Week 2)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	DashboardUI_UseCase [label="Integrate APIs, Display Data
+(Chart.js)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	MapVisualization [label="Map Visualization (Leaflet.js)
+(James, Week 3)" fillcolor="#87CEEB" shape=rectangle style=filled]
+	MapVisualization_UseCase [label="Integrate GIS Data, Display
+Flood Zones" fillcolor="#87CEEB" shape=rectangle style=filled]
+	AuthAPI [label="User Authentication API
+(Godfrey, Week 1)" fillcolor="#FFA500" shape=rectangle style=filled]
+	AuthAPI_UseCase [label="JWT Token Management, Validate User
+(API: /api/auth)" fillcolor="#FFA500" shape=rectangle style=filled]
+	SubscriptionAPI [label="Subscription API Design
+(Godfrey, Week 2)" fillcolor="#FFA500" shape=rectangle style=filled]
+	SubscriptionAPI_UseCase [label="Manage Plans, Handle
+Upgrades/Downgrades
+(API: /api/subscription)" fillcolor="#FFA500" shape=rectangle style=filled]
+	DataAPIs [label="Real-time Data APIs
+(Godfrey, Week 1)" fillcolor="#FFA500" shape=rectangle style=filled]
+	DataAPIs_UseCase [label="Water Levels, Humidity, Temperature
+(API: /monitoring/water-levels)" fillcolor="#FFA500" shape=rectangle style=filled]
+	PredictionModels [label="Prediction Models Implementation
+(Godfrey, Week 3)" fillcolor="#FFA500" shape=rectangle style=filled]
+	PredictionModels_UseCase [label="Linear Regression, ARIMA/SARIMA
+(API: /api/predict)" fillcolor="#FFA500" shape=rectangle style=filled]
+	FloodMonitoring [label="Flood Monitoring Backend
+(Godfrey, Week 3)" fillcolor="#FFA500" shape=rectangle style=filled]
+	FloodMonitoring_UseCase [label="Fetch GIS Data, Kalman Filter
+(API: /api/flood-monitoring)" fillcolor="#FFA500" shape=rectangle style=filled]
+	SMSAlerts [label="SMS Alert System Integration
+(Godfrey, Week 4)" fillcolor="#FFA500" shape=rectangle style=filled]
+	SMSAlerts_UseCase [label="AWS SNS, AfricasTalking Integration
+Notify Critical Flood Levels" fillcolor="#FFA500" shape=rectangle style=filled]
+	TestingDebugging [label="Testing & Debugging
+(James & Godfrey, Week 4)" fillcolor="#90EE90" shape=rectangle style=filled]
+	TestingDebugging_UseCase [label="Unit Testing (APIs), Integration Testing
+(Frontend/Backend)" fillcolor="#90EE90" shape=rectangle style=filled]
+	Start -> PaymentModuleUI
+	PaymentModuleUI -> PaymentAPI
+	PaymentAPI -> PaymentAPI_UseCase
+	Start -> AuthUI
+	AuthUI -> AuthUI_UseCase
+	AuthUI -> PaymentAPI
+	Start -> SubscriptionUI
+	SubscriptionUI -> SubscriptionUI_UseCase
+	SubscriptionUI -> DashboardUI
+	DashboardUI -> DashboardUI_UseCase
+	DashboardUI -> MapVisualization
+	MapVisualization -> MapVisualization_UseCase
+	Start -> AuthAPI
+	AuthAPI -> AuthAPI_UseCase
+	Start -> SubscriptionAPI
+	SubscriptionAPI -> SubscriptionAPI_UseCase
+	Start -> DataAPIs
+	DataAPIs -> DataAPIs_UseCase
+	DataAPIs -> DashboardUI
+	PredictionModels -> PredictionModels_UseCase
+	FloodMonitoring -> FloodMonitoring_UseCase
+	SMSAlerts -> SMSAlerts_UseCase
+	AuthAPI -> AuthUI
+	SubscriptionAPI -> SubscriptionUI
+	DataAPIs -> DashboardUI
+	FloodMonitoring -> MapVisualization
+	PaymentAPI_UseCase -> TestingDebugging
+	MapVisualization_UseCase -> TestingDebugging
+	SMSAlerts_UseCase -> TestingDebugging
+	TestingDebugging -> End
+}

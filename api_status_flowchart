@@ -1,0 +1,153 @@
+// API Health Check Flowchart
+digraph "API Status Flowchart" {
+	Start [label=Start fillcolor="#ADD8E6" shape=oval style=filled]
+	End [label=End fillcolor="#ADD8E6" shape=oval style=filled]
+	contenttypes [label="contenttypes
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> contenttypes
+	sessions [label="sessions
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> sessions
+	messages [label="messages
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> messages
+	staticfiles [label="staticfiles
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> staticfiles
+	sites [label="sites
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> sites
+	allauth [label="allauth
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> allauth
+	allauth_URLResolver [label="''
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	allauth -> allauth_URLResolver
+	allauth_URLResolver [label="'social/'
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	allauth -> allauth_URLResolver
+	allauth_URLResolver [label="'google/'
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	allauth -> allauth_URLResolver
+	account [label="account
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> account
+	socialaccount [label="socialaccount
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> socialaccount
+	google [label="google
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> google
+	userauth [label="userauth
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> userauth
+	userauth_register [label="'register/' [name='register']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	userauth -> userauth_register
+	userauth_login [label="'login/' [name='login']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	userauth -> userauth_login
+	"userauth_user-list" [label="'users/' [name='user-list']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	userauth -> "userauth_user-list"
+	userauth_logout [label="'logout/' [name='logout']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	userauth -> userauth_logout
+	corsheaders [label="corsheaders
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> corsheaders
+	authtoken [label="authtoken
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> authtoken
+	rest_framework [label="rest_framework
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> rest_framework
+	rest_framework_login [label="'login/' [name='login']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	rest_framework -> rest_framework_login
+	rest_framework_logout [label="'logout/' [name='logout']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	rest_framework -> rest_framework_logout
+	subscription [label="subscription
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> subscription
+	"subscription_subscription-plans" [label="'plans/' [name='subscription-plans']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	subscription -> "subscription_subscription-plans"
+	"subscription_check-subscription-status" [label="'status/' [name='check-subscription-status']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	subscription -> "subscription_check-subscription-status"
+	subscription_subscribe [label="'subscribe/' [name='subscribe']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	subscription -> subscription_subscribe
+	"subscription_get-dashboard-url" [label="'get-dashboard-url/' [name='get-dashboard-url']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	subscription -> "subscription_get-dashboard-url"
+	api [label="api
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> api
+	"api_user-info" [label="'user-info/' [name='user-info']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	api -> "api_user-info"
+	api_monitor [label="api_monitor
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> api_monitor
+	api_monitor_api_status [label="'status/' [name='api_status']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	api_monitor -> api_monitor_api_status
+	payments [label="payments
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> payments
+	"payments_create-payment-intent" [label="'create-payment-intent/' [name='create-payment-intent']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	payments -> "payments_create-payment-intent"
+	"payments_payment-webhook" [label="'webhook/' [name='payment-webhook']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	payments -> "payments_payment-webhook"
+	monitoring [label="monitoring
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> monitoring
+	"monitoring_measurements-list-create" [label="'measurements/' [name='measurements-list-create']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> "monitoring_measurements-list-create"
+	"monitoring_water-levels" [label="'water-levels/' [name='water-levels']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> "monitoring_water-levels"
+	monitoring_humidity [label="'humidity/' [name='humidity']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> monitoring_humidity
+	monitoring_temperature [label="'temperature/' [name='temperature']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> monitoring_temperature
+	"monitoring_linear-regression" [label="'linear-regression/' [name='linear-regression']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> "monitoring_linear-regression"
+	"monitoring_get-data" [label="'getdata/' [name='get-data']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> "monitoring_get-data"
+	monitoring_list_all_files [label="'list-files/' [name='list_all_files']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> monitoring_list_all_files
+	"monitoring_flood-monitoring" [label="'flood-monitoring/' [name='flood-monitoring']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> "monitoring_flood-monitoring"
+	"monitoring_map-visualization" [label="'map-visualization/' [name='map-visualization']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	monitoring -> "monitoring_map-visualization"
+	prediction [label="prediction
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> prediction
+	prediction_create_time_slot [label="'create-time-slot/' [name='create_time_slot']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	prediction -> prediction_create_time_slot
+	prediction_get_predictions [label="'get-predictions/' [name='get_predictions']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	prediction -> prediction_get_predictions
+	apistatus [label="apistatus
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	Start -> apistatus
+	"apistatus_endpoint-status" [label="'endpointstatus/' [name='endpoint-status']
+(Not Working)" fillcolor="#865850FF" shape=ellipse style=filled]
+	apistatus -> "apistatus_endpoint-status"
+	apistatus -> End
+}
