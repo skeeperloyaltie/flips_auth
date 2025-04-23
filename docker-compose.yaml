@@ -25,8 +25,14 @@ services:
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
       - CUDA_VISIBLE_DEVICES=""
-      - ALLOWED_HOSTS=flipsintel.org,197.254.53.253,localhost,127.0.0.1,django
+      - ALLOWED_HOSTS=flipsintel.org,197.254.53.253,localhost,127.0.0.1,django,django.flipsintel.org
     restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.django.rule=Host(`django.flipsintel.org`)"
+      - "traefik.http.routers.django.entrypoints=websecure"
+      - "traefik.http.routers.django.tls=true"
+      - "traefik.http.services.django.loadbalancer.server.port=8000"
 
 volumes:
   static_data:
