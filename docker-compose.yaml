@@ -1,0 +1,33 @@
+services:
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - static_data:/app/static
+      - media_data:/app/media
+    expose:
+      - "8000"
+    command: >
+      sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
+             python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py add_rigs &&
+             python manage.py add_subscription_plans &&
+             python manage.py create_profiles &&
+             python manage.py createprofile &&
+             gunicorn --bind 0.0.0.0:8000 auth.wsgi:application"
+    environment:
+      - DEBUG=${DEBUG}
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+      - CUDA_VISIBLE_DEVICES=""
+      - ALLOWED_HOSTS=flipsintel.org,197.254.53.253,localhost,127.0.0.1,django
+    restart: always
+
+volumes:
+  static_data:
+  media_data:
