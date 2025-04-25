@@ -25,14 +25,56 @@ services:
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
       - CUDA_VISIBLE_DEVICES=""
-      - ALLOWED_HOSTS=flipsintel.org,197.254.53.253,localhost,127.0.0.1,django,django.flipsintel.org
+      - ALLOWED_HOSTS=flipsintel.org,197.254.53.253,197.254.4.166,localhost,127.0.0.1,django,j48wsk8cs0k08ok0c0kk0swk.197.254.4.166.sslip.io
+      - DJANGO_SETTINGS_MODULE=flips_auth.settings
     restart: always
+    networks:
+      - shared_floodsys
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.django.rule=Host(`django.flipsintel.org`)"
+      - "traefik.http.routers.django.rule=Host(`j48wsk8cs0k08ok0c0kk0swk.197.254.4.166.sslip.io`)"
       - "traefik.http.routers.django.entrypoints=websecure"
       - "traefik.http.routers.django.tls=true"
       - "traefik.http.services.django.loadbalancer.server.port=8000"
+
+  redis:
+    image: redis:alpine
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shared_floodsys
+    restart: always
+
+  data_sender:
+    build:
+      context: .
+      dockerfile: data_sender.Dockerfile
+    volumes:
+      - ./data_sender:/app
+    depends_on:
+      - redis
+    networks:
+      - shared_floodsys
+    command: >
+      sh -c "python send_data.py"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - API_HOST=https://197.254.53.253  # Proxy through floodsys nginx
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_HOST=${DATABASE_HOST}
+      - DATABASE_PORT=${DATABASE_PORT}
+    restart: always
+
+networks:
+  shared_floodsys:
+    external: true
 
 volumes:
   static_data:
