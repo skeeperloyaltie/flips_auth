@@ -55,7 +55,7 @@ services:
       context: .
       dockerfile: data_sender.Dockerfile
     volumes:
-      - ./data_sender:/app
+      - data_sender:/app
     depends_on:
       - redis
     networks:
