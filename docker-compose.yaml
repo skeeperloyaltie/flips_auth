@@ -55,7 +55,7 @@ services:
       context: .
       dockerfile: data_sender.Dockerfile
     volumes:
-      - data_sender:/app
+      - ./data_sender:/app  # Updated to bind mount
     depends_on:
       - redis
     networks:
@@ -64,7 +64,7 @@ services:
       sh -c "python send_data.py"
     environment:
       - REDIS_URL=redis://redis:6379
-      - API_HOST=https://197.254.53.253  # Proxy through floodsys nginx
+      - API_HOST=https://197.254.53.253
       - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
