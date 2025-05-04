@@ -63,7 +63,7 @@ services:
       sh -c "python sender/send_data.py"
     environment:
       - REDIS_URL=redis://redis:6379
-      - API_HOST=http://django:8000  # Use internal Docker network
+      - API_HOST=http://django:8000
       - DATABASE_NAME=${DATABASE_NAME}
       - DATABASE_USER=${DATABASE_USER}
       - DATABASE_PASSWORD=${DATABASE_PASSWORD}
