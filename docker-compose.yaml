@@ -59,6 +59,28 @@ services:
       - DATABASE_PORT=${DATABASE_PORT}
     restart: always
 
+  db:
+    image: postgis/postgis:13-3.1
+    environment:
+      - POSTGRES_DB=flipsintel
+      - POSTGRES_USER=flipsintel
+      - POSTGRES_PASSWORD=1391
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "flipsintel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
+    restart: always
+    
 volumes:
   static_data:
   media_data:
+  postgres_data:
