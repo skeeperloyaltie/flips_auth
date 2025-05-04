@@ -4,11 +4,15 @@ import time
 import random
 from datetime import datetime
 import pytz
+import redis
+import os
+
+# Redis connection
+redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
 
 # The endpoint URLs
-# Using the service name 'django' to route through Docker's internal network
-sensor_data_url = "https://django:8000/monitor/sensor-data/"
-rigs_url = "https://django:8000/monitor/get-rigs/"
+sensor_data_url = "http://django:8000/monitor/sensor-data/"
+rigs_url = "http://django:8000/monitor/get-rigs/"
 
 # The header, including an authorization token
 headers = {
@@ -17,27 +21,35 @@ headers = {
 }
 
 def fetch_rigs():
-    """Fetches rig data from the server."""
+    """Fetches rig data from the server or Redis cache."""
+    # Try to get rigs from Redis
+    cached_rigs = redis_client.get("rigs")
+    if cached_rigs:
+        return json.loads(cached_rigs)
+
+    # Fetch from API if not in cache
     while True:
         try:
             response = requests.get(rigs_url, headers=headers)
             if response.status_code == 200:
-                return response.json()
+                rigs = response.json()
+                # Cache for 5 minutes
+                redis_client.setex("rigs", 300, json.dumps(rigs))
+                return rigs
             else:
                 print(f"Failed to fetch rigs: {response.status_code}")
         except requests.exceptions.RequestException as e:
             print(f"Error fetching rigs: {e}")
 
         print("Retrying in 60 seconds...")
-        time.sleep(6)
+        time.sleep(60)
 
 def generate_real_time_data(sensor_id, rig):
     """
     Generates real-time data using the current timestamp.
-    This ensures the data reflects the exact moment it's created.
     """
     nairobi_tz = pytz.timezone('Africa/Nairobi')
-    timestamp = datetime.now(nairobi_tz).isoformat()  # Current timestamp in ISO format
+    timestamp = datetime.now(nairobi_tz).isoformat()
 
     return {
         "sensorID": sensor_id,
@@ -45,8 +57,8 @@ def generate_real_time_data(sensor_id, rig):
         "temperature": round(random.uniform(20.0, 30.0), 2),
         "humidity": round(random.uniform(50.0, 70.0), 2),
         "timestamp": timestamp,
-        "latitude": rig["latitude"],  # Add latitude
-        "longitude": rig["longitude"]  # Add longitude
+        "latitude": rig["latitude"],
+        "longitude": rig["longitude"]
     }
 
 def send_data():
@@ -67,7 +79,6 @@ def send_data():
             print(f"Skipping rig with invalid or missing sensor_id: {selected_rig}")
             continue
 
-        # Generate real-time data
         data = generate_real_time_data(sensor_id, selected_rig)
 
         try:
@@ -90,7 +101,6 @@ def send_data():
                 f"Error sending request for sensor {sensor_id} (rig {selected_rig.get('rig_id')}): {e}"
             )
 
-        # Send data every 3 seconds to simulate real-time updates
         time.sleep(3)
 
 if __name__ == "__main__":
