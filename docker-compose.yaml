@@ -25,7 +25,7 @@ services:
       - DATABASE_HOST=${DATABASE_HOST}
       - DATABASE_PORT=${DATABASE_PORT}
       - CUDA_VISIBLE_DEVICES=""
-      - DJANGO_SETTINGS_MODULE=flips_auth.settings
+      - DJANGO_SETTINGS_MODULE=auth.settings
     restart: always
 
 
