@@ -19,7 +19,6 @@ pytest
 pytest-asyncio 
 pytest-django
 Pillow~=10.4.0
-mysqlclient
 pymongo[srv]~=4.9.1
 google-auth
 google-auth-oauthlib
