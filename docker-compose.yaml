@@ -16,7 +16,7 @@ services:
              python manage.py add_subscription_plans &&
              python manage.py create_profiles &&
              python manage.py createprofile &&
-             gunicorn --bind 0.0.0.0:8000 --timeout 120 --workers 2 --threads 4 auth.wsgi:application"
+             gunicorn --bind https://api.flipsintel.org:8000 --timeout 120 --workers 2 --threads 4 auth.wsgi:application"
     environment:
       DEBUG: '${DEBUG}'
       DATABASE_NAME: '${DATABASE_NAME}'
