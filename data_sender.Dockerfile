@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY datasender.txt .
 RUN pip install --no-cache-dir -r datasender.txt
 
 # Copy send_data.py directly into /app
