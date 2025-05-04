@@ -29,7 +29,7 @@ services:
       COOLIFY_BRANCH: '"main"'
       COOLIFY_RESOURCE_UUID: hsco0sswk4kw8kcsw4o4ckw0
       COOLIFY_CONTAINER_NAME: django-hsco0sswk4kw8kcsw4o4ckw0-105723018028
-      COOLIFY_URL: 'https://api.flipsintel.org'
+      COOLIFY_URL: 'api.flipsintel.org'
       COOLIFY_FQDN: api.flipsintel.org
     depends_on:
       - db
