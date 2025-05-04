@@ -4,10 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - static_data:/app/static
-      - media_data:/app/media
+      - 'hsco0sswk4kw8kcsw4o4ckw0_static-data:/app/static'
+      - 'hsco0sswk4kw8kcsw4o4ckw0_media-data:/app/media'
     expose:
-      - "8000"
+      - '8000'
     command: >
       sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
              python manage.py migrate &&
@@ -16,34 +16,78 @@ services:
              python manage.py add_subscription_plans &&
              python manage.py create_profiles &&
              python manage.py createprofile &&
-             gunicorn --bind 0.0.0.0:8000 auth.wsgi:application"
+             gunicorn --bind 0.0.0.0:8000 --timeout 120 --workers 2 --threads 4 auth.wsgi:application"
     environment:
-      - DEBUG=${DEBUG}
-      - DATABASE_NAME=${DATABASE_NAME}
-      - DATABASE_USER=${DATABASE_USER}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_HOST=db
-      - DATABASE_PORT=${DATABASE_PORT}
-      - CUDA_VISIBLE_DEVICES=""
-      - DJANGO_SETTINGS_MODULE=auth.settings
+      DEBUG: '${DEBUG}'
+      DATABASE_NAME: '${DATABASE_NAME}'
+      DATABASE_USER: '${DATABASE_USER}'
+      DATABASE_PASSWORD: '${DATABASE_PASSWORD}'
+      DATABASE_HOST: db
+      DATABASE_PORT: '${DATABASE_PORT}'
+      CUDA_VISIBLE_DEVICES: '""'
+      DJANGO_SETTINGS_MODULE: auth.settings
+      COOLIFY_BRANCH: '"main"'
+      COOLIFY_RESOURCE_UUID: hsco0sswk4kw8kcsw4o4ckw0
+      COOLIFY_CONTAINER_NAME: django-hsco0sswk4kw8kcsw4o4ckw0-105723018028
+      COOLIFY_URL: 'https://api.flipsintel.org'
+      COOLIFY_FQDN: api.flipsintel.org
     depends_on:
       - db
     restart: always
     networks:
       - backend
+      - hsco0sswk4kw8kcsw4o4ckw0
+    container_name: django-hsco0sswk4kw8kcsw4o4ckw0-105723018028
+    labels:
+      - coolify.managed=true
+      - coolify.version=4.0.0-beta.415
+      - coolify.applicationId=3
+      - coolify.type=application
+      - coolify.name=django-hsco0sswk4kw8kcsw4o4ckw0-105723018028
+      - coolify.resourceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.projectName=flips-landing
+      - coolify.serviceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.environmentName=production
+      - coolify.pullRequestId=0
+      - caddy_0=https://api.flipsintel.org
+      - caddy_0.handle_path=/*
+      - caddy_0.handle_path.0_reverse_proxy={{upstreams 8000}}
+      - caddy_0.header=-Server
+      - caddy_0.encode=zstd gzip
+      - caddy_ingress_network=hsco0sswk4kw8kcsw4o4ckw0
 
   redis:
-    image: redis:alpine
+    image: 'redis:alpine'
     expose:
-      - "6379"
+      - '6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        - CMD
+        - redis-cli
+        - ping
       interval: 10s
       timeout: 5s
       retries: 5
     restart: always
     networks:
       - backend
+      - hsco0sswk4kw8kcsw4o4ckw0
+    container_name: redis-hsco0sswk4kw8kcsw4o4ckw0-105723033039
+    labels:
+      - coolify.managed=true
+      - coolify.version=4.0.0-beta.415
+      - coolify.applicationId=3
+      - coolify.type=application
+      - coolify.name=redis-hsco0sswk4kw8kcsw4o4ckw0-105723033039
+      - coolify.resourceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.projectName=flips-landing
+      - coolify.serviceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.environmentName=production
+      - coolify.pullRequestId=0
+    environment:
+      COOLIFY_BRANCH: '"main"'
+      COOLIFY_RESOURCE_UUID: hsco0sswk4kw8kcsw4o4ckw0
+      COOLIFY_CONTAINER_NAME: redis-hsco0sswk4kw8kcsw4o4ckw0-105723033039
 
   data_sender:
     build:
@@ -53,46 +97,87 @@ services:
       - redis
       - django
       - db
-    command: >
-      sh -c "python sender/send_data.py"
+    command: "sh -c \"python sender/send_data.py\""
     environment:
-      - REDIS_URL=redis://redis:6379
-      - API_HOST=http://django:8000
-      - DATABASE_NAME=${DATABASE_NAME}
-      - DATABASE_USER=${DATABASE_USER}
-      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
-      - DATABASE_HOST=db
-      - DATABASE_PORT=${DATABASE_PORT}
+      REDIS_URL: 'redis://redis:6379'
+      API_HOST: 'http://django:8000'
+      DATABASE_NAME: '${DATABASE_NAME}'
+      DATABASE_USER: '${DATABASE_USER}'
+      DATABASE_PASSWORD: '${DATABASE_PASSWORD}'
+      DATABASE_HOST: db
+      DATABASE_PORT: '${DATABASE_PORT}'
+      COOLIFY_BRANCH: '"main"'
+      COOLIFY_RESOURCE_UUID: hsco0sswk4kw8kcsw4o4ckw0
+      COOLIFY_CONTAINER_NAME: data_sender-hsco0sswk4kw8kcsw4o4ckw0-105723033508
     restart: always
     networks:
       - backend
+      - hsco0sswk4kw8kcsw4o4ckw0
+    container_name: data_sender-hsco0sswk4kw8kcsw4o4ckw0-105723033508
+    labels:
+      - coolify.managed=true
+      - coolify.version=4.0.0-beta.415
+      - coolify.applicationId=3
+      - coolify.type=application
+      - coolify.name=data_sender-hsco0sswk4kw8kcsw4o4ckw0-105723033508
+      - coolify.resourceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.projectName=flips-landing
+      - coolify.serviceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.environmentName=production
+      - coolify.pullRequestId=0
 
   db:
-    image: postgis/postgis:13-3.1
+    image: 'postgis/postgis:13-3.1'
     environment:
-      - POSTGRES_DB=flipsintel
-      - POSTGRES_USER=flipsintel
-      - POSTGRES_PASSWORD=1391
+      POSTGRES_DB: flipsintel
+      POSTGRES_USER: flipsintel
+      POSTGRES_PASSWORD: '1391'
+      COOLIFY_BRANCH: '"main"'
+      COOLIFY_RESOURCE_UUID: hsco0sswk4kw8kcsw4o4ckw0
+      COOLIFY_CONTAINER_NAME: db-hsco0sswk4kw8kcsw4o4ckw0-105723037989
     ports:
-      - "5432:5432"
+      - '5432:5432'
     expose:
-      - "5432"
+      - '5432'
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "flipsintel"]
+      test:
+        - CMD
+        - pg_isready
+        - '-U'
+        - flipsintel
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - 'hsco0sswk4kw8kcsw4o4ckw0_postgres-data:/var/lib/postgresql/data'
     networks:
       - backend
+      - hsco0sswk4kw8kcsw4o4ckw0
     restart: always
+    container_name: db-hsco0sswk4kw8kcsw4o4ckw0-105723037989
+    labels:
+      - coolify.managed=true
+      - coolify.version=4.0.0-beta.415
+      - coolify.applicationId=3
+      - coolify.type=application
+      - coolify.name=db-hsco0sswk4kw8kcsw4o4ckw0-105723037989
+      - coolify.resourceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.projectName=flips-landing
+      - coolify.serviceName=skeeperloyaltieflips-authmain-jo8s008wo0k84ocwsko0cwo0
+      - coolify.environmentName=production
+      - coolify.pullRequestId=0
 
 volumes:
-  static_data:
-  media_data:
-  postgres_data:
+  hsco0sswk4kw8kcsw4o4ckw0_static-data:
+    name: hsco0sswk4kw8kcsw4o4ckw0_static-data
+  hsco0sswk4kw8kcsw4o4ckw0_media-data:
+    name: hsco0sswk4kw8kcsw4o4ckw0_media-data
+  hsco0sswk4kw8kcsw4o4ckw0_postgres-data:
+    name: hsco0sswk4kw8kcsw4o4ckw0_postgres-data
 
 networks:
   backend:
     driver: bridge
+  hsco0sswk4kw8kcsw4o4ckw0:
+    name: hsco0sswk4kw8kcsw4o4ckw0
+    external: true
