@@ -31,4 +31,4 @@ COPY . /app/
 
 EXPOSE 8000
 
-CMD ["gunicorn", "auth.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "auth.wsgi:application", "--bind", "https://api.flipsintel.org:8000"]
