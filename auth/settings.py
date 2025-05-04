@@ -254,7 +254,7 @@ SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_SECURE = True  # Cookies only sent over HTTPS
 CSRF_COOKIE_SECURE = True  # CSRF cookies only sent over HTTPS
 
-
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # For use with reverse proxies like Nginx
 # Database routers
 # DATABASE_ROUTERS = ['datasync.db_routers.PostgresRouter']
 
