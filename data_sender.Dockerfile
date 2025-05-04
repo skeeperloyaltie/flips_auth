@@ -15,6 +15,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy send_data.py directly into /app
-COPY data_sender/send_data.py /app/
+COPY sender/send_data.py /app/sender/ 
 
-CMD ["python", "send_data.py"]
+CMD ["python", "sender/send_data.py"]

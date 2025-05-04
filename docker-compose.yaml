@@ -60,7 +60,7 @@ services:
     networks:
       - shared_floodsys
     command: >
-      sh -c "python send_data.py"
+      sh -c "python sender/send_data.py"
     environment:
       - REDIS_URL=redis://redis:6379
       - API_HOST=http://django:8000  # Use internal Docker network
