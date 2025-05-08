@@ -8,6 +8,8 @@ services:
       - 'media-data:/app/media'
     expose:
       - '8000'
+    ports:
+      - '8000:8000'  # Add this to map port 8000 to the host
     command: >
       sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
              python manage.py migrate &&
@@ -16,7 +18,7 @@ services:
              python manage.py add_subscription_plans &&
              python manage.py create_profiles &&
              python manage.py createprofile &&
-             gunicorn --bind https://api.flipsintel.org:8000 --timeout 120 --workers 2 --threads 4 auth.wsgi:application"
+             gunicorn --bind 0.0.0.0:8000 --timeout 120 --workers 2 --threads 4 auth.wsgi:application"  # Update binding to 0.0.0.0:8000
     environment:
       DEBUG: '${DEBUG}'
       DATABASE_NAME: '${DATABASE_NAME}'
@@ -26,7 +28,6 @@ services:
       DATABASE_PORT: '${DATABASE_PORT}'
       CUDA_VISIBLE_DEVICES: '""'
       DJANGO_SETTINGS_MODULE: auth.settings
-   
     depends_on:
       - db
     restart: always
