@@ -29,6 +29,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app/
 
+CMD ["python", "sender/send_data.py"]
+
 EXPOSE 8000
 
 # CMD ["gunicorn", "auth.wsgi:application", "--bind", "https://api.flipsintel.org:8000"]
