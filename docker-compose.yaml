@@ -1,0 +1,114 @@
+services:
+  django:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - 'static-data:/app/static'
+      - 'media-data:/app/media'
+    expose:
+      - '8000'
+    command: >
+      sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
+             python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             python manage.py add_rigs &&
+             python manage.py add_subscription_plans &&
+             python manage.py create_profiles &&
+             python manage.py createprofile &&
+             gunicorn --bind https://api.flipsintel.org:8000 --timeout 120 --workers 2 --threads 4 auth.wsgi:application"
+    environment:
+      DEBUG: '${DEBUG}'
+      DATABASE_NAME: '${DATABASE_NAME}'
+      DATABASE_USER: '${DATABASE_USER}'
+      DATABASE_PASSWORD: '${DATABASE_PASSWORD}'
+      DATABASE_HOST: db
+      DATABASE_PORT: '${DATABASE_PORT}'
+      CUDA_VISIBLE_DEVICES: '""'
+      DJANGO_SETTINGS_MODULE: auth.settings
+   
+    depends_on:
+      - db
+    restart: always
+    networks:
+      - backend
+  
+
+
+  redis:
+    image: 'redis:alpine'
+    expose:
+      - '6379'
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    networks:
+      - backend
+    
+   
+  data_sender:
+    build:
+      context: .
+      dockerfile: data_sender.Dockerfile
+    depends_on:
+      - redis
+      - django
+      - db
+    command: "sh -c \"python sender/send_data.py\""
+    environment:
+      DATABASE_NAME: '${DATABASE_NAME}'
+      DATABASE_USER: '${DATABASE_USER}'
+      DATABASE_PASSWORD: '${DATABASE_PASSWORD}'
+      DATABASE_HOST: db
+      DATABASE_PORT: '${DATABASE_PORT}'
+ 
+    restart: always
+    
+
+  db:
+    image: 'postgis/postgis:13-3.1'
+    environment:
+      POSTGRES_DB: flipsintel
+      POSTGRES_USER: flipsintel
+      POSTGRES_PASSWORD: '1391'
+      COOLIFY_BRANCH: '"main"'
+      COOLIFY_RESOURCE_UUID: hsco0sswk4kw8kcsw4o4ckw0
+      COOLIFY_CONTAINER_NAME: db-hsco0sswk4kw8kcsw4o4ckw0-105723037989
+    ports:
+      - '5432:5432'
+    expose:
+      - '5432'
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - '-U'
+        - flipsintel
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - 'postgres-data:/var/lib/postgresql/data'
+    networks:
+      - backend
+    restart: always
+   
+
+volumes:
+  hsco0sswk4kw8kcsw4o4ckw0_static-data:
+    name: static-data
+  hsco0sswk4kw8kcsw4o4ckw0_media-data:
+    name: media-data
+  hsco0sswk4kw8kcsw4o4ckw0_postgres-data:
+    name: postgres-data
+
+networks:
+  backend:
+    driver: bridge
+  
