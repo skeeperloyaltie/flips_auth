@@ -32,8 +32,18 @@ class CreateUserView(generics.CreateAPIView):
     @transaction.atomic  # Ensure atomic transaction
     def perform_create(self, serializer):
         try:
+            # Log the raw data received from the frontend
+            logger.debug(f"Received user creation data: {self.request.data}")
+
+            # Validate the data using the serializer
+            serializer.is_valid(raise_exception=True)  # This will trigger serializer validation and logging
+            validated_data = serializer.validated_data
+
+            # Log the validated data (what was expected and processed)
+            logger.debug(f"Validated data for user creation: {validated_data}")
+
             user = serializer.save(is_active=False)  # Deactivate account till it is confirmed
-            logger.info(f'User {user.username} created.')
+            logger.info(f"User {user.username} created successfully.")
 
             token = str(uuid.uuid4())
             VerificationToken.objects.create(user=user, token=token)
@@ -44,9 +54,14 @@ class CreateUserView(generics.CreateAPIView):
                 'FlipsOrganization',
                 [user.email],
             )
-            logger.info(f'User {user.username} created and verification email sent.')
+            logger.info(f"Verification email sent to {user.email} for user {user.username}.")
+        except serializers.ValidationError as ve:
+            # Log validation errors with details
+            logger.error(f"Validation error during user creation: {ve.detail}")
+            raise
         except Exception as e:
-            logger.error(f'Error creating user: {e}')
+            # Log any other unexpected errors
+            logger.error(f"Unexpected error during user creation: {str(e)}", exc_info=True)
             raise
 
 class VerifyEmailView(views.APIView):

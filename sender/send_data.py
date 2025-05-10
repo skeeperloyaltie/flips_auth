@@ -11,8 +11,8 @@ import os
 redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"))
 
 # The endpoint URLs
-sensor_data_url = "http://django:8000/monitor/sensor-data/"
-rigs_url = "http://django:8000/monitor/get-rigs/"
+sensor_data_url = "https://api.flipsintel.org/monitor/sensor-data/"
+rigs_url = "https://api.flipsintel.org/monitor/get-rigs/"
 
 # The header, including an authorization token
 headers = {
