@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - 'static-data:/app/static'  # Source static files (if needed)
-      - 'static-files:/app/staticfiles'  # Collected static files for serving
+      - 'static-data:/app/static'
+      - 'static-files:/app/staticfiles'
       - 'media-data:/app/media'
     expose:
       - '8000'
@@ -32,6 +32,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
     networks:
       - backend
@@ -105,7 +110,7 @@ services:
 volumes:
   hsco0sswk4kw8kcsw4o4ckw0_static-data:
     name: static-data
-  hsco0sswk4kw8kcsw4o4ckw0_static-files:  # Added volume for collected static files
+  hsco0sswk4kw8kcsw4o4ckw0_static-files:
     name: static-files
   hsco0sswk4kw8kcsw4o4ckw0_media-data:
     name: media-data
