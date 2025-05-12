@@ -259,7 +259,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')  # For use with re
 # DATABASE_ROUTERS = ['datasync.db_routers.PostgresRouter']
 
 SUBSCRIPTION_API_URL = (
-    "http://flipsintel.org:8000/subscription/subscribe"  # or your actual API URL
+    "https://api.flipsintel.org/subscription/subscribe"  # or your actual API URL
 )
 # settings.py
 import os
@@ -329,7 +329,7 @@ STRIPE_ENDPOINT_SECRET = "your_webhook_secret"
 
 # project/settings.py
 CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 
@@ -339,7 +339,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Pesapal API credentials
 PESAPAL_CONSUMER_KEY = "qkio1BGGYAXTu2JOfm7XSXNruoZsrqEW"
 PESAPAL_CONSUMER_SECRET = "osGQ364R49cXKeOYSpaOnT++rHs="
-PESAPAL_CALLBACK_URL = "http://127.0.0.1:8000/payments/payment-callback/"  # This should point to your payment callback endpoint
+PESAPAL_CALLBACK_URL = "https://api.flipsintel.org/payments/payment-callback/"  # This should point to your payment callback endpoint
 
 
 # Daraja (M-PESA) API Configuration
@@ -348,7 +348,7 @@ DARAJA_CONSUMER_SECRET = os.getenv(
     "DARAJA_CONSUMER_SECRET", "your_daraja_consumer_secret"
 )
 DARAJA_CALLBACK_URL = os.getenv(
-    "DARAJA_CALLBACK_URL", "https://127.0.0.1:8000/payments/payment_callback"
+    "DARAJA_CALLBACK_URL", "https://api.flipsintel.org/payments/payment_callback"
 )
 DARAJA_SHORT_CODE = os.getenv("DARAJA_SHORT_CODE", "your_short_code")
 DARAJA_INITIATOR = os.getenv("DARAJA_INITIATOR", "your_initiator_username")

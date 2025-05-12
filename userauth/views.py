@@ -96,11 +96,8 @@ class LoginView(views.APIView):
         user = authenticate(username=username, password=password)
         logger.debug(f'User authentication result: {user}')
 
-
         if user is not None:
-            if not user.is_active:
-                logger.info(f'Login attempt for non-active user: {username}')
-                return Response({'error': 'Account is not verified. Please check your email.'}, status=status.HTTP_400_BAD_REQUEST)
+            # Removed the is_active check to allow login for unverified accounts
             token, created = Token.objects.get_or_create(user=user)
             logger.info(f'User {username} logged in successfully.')
             return Response({'token': token.key}, status=status.HTTP_200_OK)
