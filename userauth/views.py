@@ -1,4 +1,3 @@
-# userauth/views.py
 import logging
 import uuid
 from django.contrib.auth import authenticate, get_user_model
@@ -11,9 +10,10 @@ from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-from .serializers import UserSerializer, UserProfileSerializer
+from .serializers import UserSerializer
 from .models import VerificationToken
 from userprofile.models import UserProfile
+from userprofile.serializers import UserProfileSerializer
 
 User = get_user_model()
 
@@ -29,20 +29,15 @@ class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
 
-    @transaction.atomic  # Ensure atomic transaction
+    @transaction.atomic
     def perform_create(self, serializer):
         try:
-            # Log the raw data received from the frontend
             logger.debug(f"Received user creation data: {self.request.data}")
-
-            # Validate the data using the serializer
-            serializer.is_valid(raise_exception=True)  # This will trigger serializer validation and logging
+            serializer.is_valid(raise_exception=True)
             validated_data = serializer.validated_data
-
-            # Log the validated data (what was expected and processed)
             logger.debug(f"Validated data for user creation: {validated_data}")
 
-            user = serializer.save(is_active=False)  # Deactivate account till it is confirmed
+            user = serializer.save(is_active=False)
             logger.info(f"User {user.username} created successfully.")
 
             token = str(uuid.uuid4())
@@ -56,11 +51,9 @@ class CreateUserView(generics.CreateAPIView):
             )
             logger.info(f"Verification email sent to {user.email} for user {user.username}.")
         except serializers.ValidationError as ve:
-            # Log validation errors with details
             logger.error(f"Validation error during user creation: {ve.detail}")
             raise
         except Exception as e:
-            # Log any other unexpected errors
             logger.error(f"Unexpected error during user creation: {str(e)}", exc_info=True)
             raise
 
@@ -97,14 +90,21 @@ class LoginView(views.APIView):
         logger.debug(f'User authentication result: {user}')
 
         if user is not None:
-            # Removed the is_active check to allow login for unverified accounts
             token, created = Token.objects.get_or_create(user=user)
+            try:
+                profile = UserProfile.objects.get(user=user)
+                needs_privacy_policy = not profile.privacy_policy_accepted
+            except UserProfile.DoesNotExist:
+                logger.warning(f"No UserProfile found for user: {username}")
+                needs_privacy_policy = True  # Assume policy not accepted if profile is missing
             logger.info(f'User {username} logged in successfully.')
-            return Response({'token': token.key}, status=status.HTTP_200_OK)
+            return Response({
+                'token': token.key,
+                'needs_privacy_policy': needs_privacy_policy
+            }, status=status.HTTP_200_OK)
 
         logger.warning(f'Invalid login credentials for user: {username}')
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
-
 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
@@ -118,7 +118,6 @@ class GoogleLoginView(views.APIView):
         token = request.data.get('token')
         try:
             idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), 'YOUR_CLIENT_ID_HERE')
-
             if idinfo['iss'] not in ['accounts.google.com', 'https://accounts.google.com']:
                 raise ValueError('Wrong issuer.')
 
@@ -132,12 +131,23 @@ class GoogleLoginView(views.APIView):
             )
 
             if created:
+                # Create UserProfile with default privacy_policy_accepted=False
+                UserProfile.objects.create(user=user, privacy_policy_accepted=False)
                 logger.info(f'New user created with Google sign-in: {email}')
             else:
                 logger.info(f'User {email} logged in with Google sign-in.')
 
             token, _ = Token.objects.get_or_create(user=user)
-            return Response({'token': token.key})
+            try:
+                profile = UserProfile.objects.get(user=user)
+                needs_privacy_policy = not profile.privacy_policy_accepted
+            except UserProfile.DoesNotExist:
+                logger.warning(f"No UserProfile found for Google user: {email}")
+                needs_privacy_policy = True
+            return Response({
+                'token': token.key,
+                'needs_privacy_policy': needs_privacy_policy
+            })
         except ValueError as e:
             logger.error(f'Google token verification failed: {e}')
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)

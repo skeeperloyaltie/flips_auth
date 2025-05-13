@@ -1,4 +1,3 @@
-#userprofile/views.py 
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,22 +13,35 @@ from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
+import logging
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(profile)
-        return Response(serializer.data)
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            serializer = UserProfileSerializer(profile)
+            return Response(serializer.data)
+        except UserProfile.DoesNotExist:
+            logger.error(f"UserProfile not found for user: {request.user.username}")
+            return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
     def put(self, request):
-        profile = UserProfile.objects.get(user=request.user)
-        serializer = UserProfileSerializer(profile, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            serializer = UserProfileSerializer(profile, data=request.data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                logger.info(f"UserProfile updated for user: {request.user.username}")
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except UserProfile.DoesNotExist:
+            logger.error(f"UserProfile not found for user: {request.user.username}")
+            return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
 class UpdateUserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -39,6 +51,7 @@ class UpdateUserView(APIView):
         serializer = UpdateUserSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            logger.info(f"User details updated for user: {user.username}")
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -52,11 +65,13 @@ class UpdatePasswordView(APIView):
             new_password = serializer.data.get('new_password')
 
             if not request.user.check_password(old_password):
+                logger.warning(f"Invalid old password attempt for user: {request.user.username}")
                 return Response({'old_password': 'Wrong password.'}, status=status.HTTP_400_BAD_REQUEST)
 
             request.user.set_password(new_password)
             request.user.save()
-            return Response({'status': 'Password updated successfully'})
+            logger.info(f"Password updated for user: {request.user.username}")
+            return Response({'message': 'Password updated successfully'})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DeleteAccountView(APIView):
@@ -68,11 +83,13 @@ class DeleteAccountView(APIView):
             confirm = serializer.data.get('confirm')
 
             if confirm:
-                user = request.user
-                user.delete()
-                return Response({'status': 'Account deleted successfully'}, status=status.HTTP_200_OK)
+                username = request.user.username
+                request.user.delete()
+                logger.info(f"Account deleted for user: {username}")
+                return Response({'message': 'Account deleted successfully'}, status=status.HTTP_200_OK)
             else:
-                return Response({'status': 'Account deletion not confirmed'}, status=status.HTTP_400_BAD_REQUEST)
+                logger.warning(f"Account deletion not confirmed for user: {request.user.username}")
+                return Response({'error': 'Account deletion not confirmed'}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SendPasswordResetEmailView(APIView):
@@ -87,95 +104,96 @@ class SendPasswordResetEmailView(APIView):
                 token = PasswordResetTokenGenerator().make_token(user)
                 uid = urlsafe_base64_encode(force_bytes(user.pk))
 
-                reset_url = f"http://127.0.0.1:8000/userprofile/password-reset-confirm?uid={uid}&token={token}"
+                # Update the reset URL to point to the frontend confirm page
+                reset_url = f"https://flipsintel.org/login/passwordconfirm.html?uidb64={uid}&token={token}"
 
-                send_mail(
-                    'Password Reset Request',
-                    f'Click the link below to reset your password:\n{reset_url}',
-                    'gugod254@gmail.com',  # Replace with your email
-                    [email],
-                )
-            return Response({'status': 'Password reset email sent'}, status=status.HTTP_200_OK)
+                try:
+                    send_mail(
+                        'Password Reset Request',
+                        f'Hello {user.username},\n\nClick the link below to reset your password:\n{reset_url}\n\nIf you did not request this, please ignore this email.',
+                        'gugod254@gmail.com',  # Replace with your email
+                        [email],
+                        fail_silently=False,
+                    )
+                    logger.info(f"Password reset email sent to: {email}")
+                    return Response({'message': 'Password reset email sent'}, status=status.HTTP_200_OK)
+                except Exception as e:
+                    logger.error(f"Failed to send password reset email to {email}: {str(e)}")
+                    return Response({'error': 'Failed to send email'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                logger.warning(f"Password reset requested for non-existent email: {email}")
+                # Return success to prevent email enumeration
+                return Response({'message': 'Password reset email sent'}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-from rest_framework import status, permissions
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.contrib.auth.models import User
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.utils.http import urlsafe_base64_decode
-from django.utils.encoding import force_str
-from django.shortcuts import render, redirect
-from .serializers import ResetPasswordSerializer
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [permissions.AllowAny]
 
-    def get(self, request):
-        uidb64 = request.query_params.get('uid')
-        token = request.query_params.get('token')
-
-        if not uidb64 or not token:
-            return Response({'status': 'Missing uid or token in query parameters'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
-
-        if user is not None and PasswordResetTokenGenerator().check_token(user, token):
-            # Render the HTML page for password reset
-            return render(request, 'login/password_reset_confirm.html', {'uidb64': uidb64, 'token': token})
-
-        return Response({'status': 'Invalid link'}, status=status.HTTP_400_BAD_REQUEST)
-
     def post(self, request):
-        uidb64 = request.data.get('uidb64')
-        token = request.data.get('token')
-
-        try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
-
-        if user is not None and PasswordResetTokenGenerator().check_token(user, token):
-            serializer = ResetPasswordSerializer(data=request.data)
-            if serializer.is_valid():
-                new_password = serializer.validated_data.get('new_password')
-                user.set_password(new_password)
-                user.save()
-                return redirect('/static/index.html')  # Redirect to the success page
-
+        serializer = ResetPasswordSerializer(data=request.data)
+        if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response({'status': 'Invalid link'}, status=status.HTTP_400_BAD_REQUEST)
+        uidb64 = request.data.get('uidb64')
+        token = request.data.get('token')
+        new_password = serializer.validated_data.get('new_password')
 
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            logger.warning(f"Invalid uidb64 during password reset: {uidb64}")
+            return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-
-# Serializers
-from rest_framework import serializers
-
-class SendPasswordResetEmailSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-
-class ResetPasswordSerializer(serializers.Serializer):
-    new_password = serializers.CharField(max_length=128, write_only=True)
-
-    def validate_new_password(self, value):
-        # Example password validation logic
-        if len(value) < 8:  # Ensure password is at least 8 characters long
-            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if user is not None and PasswordResetTokenGenerator().check_token(user, token):
+            user.set_password(new_password)
+            user.save()
+            logger.info(f"Password reset successful for user: {user.username} (email: {user.email})")
+            return Response({'message': 'Password reset successful'}, status=status.HTTP_200_OK)
+        else:
+            logger.warning(f"Invalid token during password reset for user: {user.username if user else 'unknown'}")
+            return Response({'error': 'Invalid or expired reset link'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not any(char.isdigit() for char in value):  # Check for at least one digit
-            raise serializers.ValidationError("Password must contain at least one digit.")
+
+class VerifyResetTokenView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        uidb64 = request.query_params.get('uidb64')
+        token = request.query_params.get('token')
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+            if PasswordResetTokenGenerator().check_token(user, token):
+                return Response({'email': user.email}, status=status.HTTP_200_OK)
+            return Response({'error': 'Invalid or expired reset link'}, status=status.HTTP_400_BAD_REQUEST)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
         
-        if not any(char.isalpha() for char in value):  # Check for at least one letter
-            raise serializers.ValidationError("Password must contain at least one letter.")
+from rest_framework import status, permissions
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import UserProfile
+from django.utils import timezone
+import logging
 
-        # Additional checks can be added here (e.g., special characters)
+logger = logging.getLogger(__name__)
 
-        return value
+class AcceptPrivacyPolicyView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            profile.privacy_policy_accepted = True
+            profile.privacy_policy_accepted_date = timezone.now()
+            profile.save()
+            logger.info(f"Privacy policy accepted by user: {request.user.username}")
+            return Response({'message': 'Privacy policy accepted'}, status=status.HTTP_200_OK)
+        except UserProfile.DoesNotExist:
+            logger.error(f"UserProfile not found for user: {request.user.username}")
+            return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error accepting privacy policy for user: {request.user.username}: {str(e)}")
+            return Response({'error': 'Failed to accept privacy policy'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

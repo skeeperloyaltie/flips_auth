@@ -11,9 +11,14 @@ class PaymentMethod(models.Model):
         return self.name
 
 class UserPayment(models.Model):
+    PAYMENT_TYPES = (
+        ('card', 'Card'),
+        ('mpesa', 'M-Pesa'),
+    )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.CASCADE, null=True)
+    payment_method = models.ForeignKey(PaymentMethod, on_delete=models.CASCADE, null=True, blank=True)
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE)
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES, default='mpesa')
     unique_reference = models.CharField(max_length=100, unique=True)
     transaction_id = models.CharField(max_length=100, null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -23,4 +28,4 @@ class UserPayment(models.Model):
     verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.plan.name} - {self.payment_method.name if self.payment_method else 'N/A'}"
+        return f"{self.user.username} - {self.plan.name} - {self.payment_type}"

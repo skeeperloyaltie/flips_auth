@@ -20,6 +20,8 @@ class UserProfile(models.Model):
         SubscriptionPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name='user_profiles'
     )
     expiry_date = models.DateTimeField(null=True, blank=True)
+    privacy_policy_accepted = models.BooleanField(default=False)
+    privacy_policy_accepted_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.user.username
