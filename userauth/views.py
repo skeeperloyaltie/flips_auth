@@ -12,7 +12,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from .serializers import UserSerializer
 from .models import VerificationToken
-from userprofile.models import UserProfile
+from userprofile.models import UserProfile, PrivacyPolicyAcceptance
 from userprofile.serializers import UserProfileSerializer
 
 User = get_user_model()
@@ -38,7 +38,7 @@ class CreateUserView(generics.CreateAPIView):
             logger.debug(f"Validated data for user creation: {validated_data}")
 
             user = serializer.save(is_active=False)
-            UserProfile.objects.get_or_create(user=user, defaults={'privacy_policy_accepted': False})  # Add this
+            UserProfile.objects.get_or_create(user=user)
             logger.info(f"User {user.username} created successfully.")
 
             token = str(uuid.uuid4())
@@ -87,22 +87,21 @@ class LoginView(views.APIView):
         user = authenticate(username=username, password=password)
         logger.debug(f'User authentication result: {user}')
 
-        if user is not None:
-            token, created = Token.objects.get_or_create(user=user)
-            try:
-                profile = UserProfile.objects.get(user=user)
-                needs_privacy_policy = not profile.privacy_policy_accepted
-            except UserProfile.DoesNotExist:
-                logger.warning(f"No UserProfile found for user: {username}")
-                needs_privacy_policy = True  # Assume policy not accepted if profile is missing
-            logger.info(f'User {username} logged in successfully.')
-            return Response({
-                'token': token.key,
-                'needs_privacy_policy': needs_privacy_policy
-            }, status=status.HTTP_200_OK)
+        if user is None:
+            logger.warning(f'Invalid login credentials for user: {username}')
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        logger.warning(f'Invalid login credentials for user: {username}')
-        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.is_active:
+            logger.warning(f'Inactive account login attempt for user: {username}')
+            return Response({'error': 'Account not verified. Please check your email.'}, status=status.HTTP_403_FORBIDDEN)
+
+        token, created = Token.objects.get_or_create(user=user)
+        needs_privacy_policy = not PrivacyPolicyAcceptance.objects.filter(user=user, accepted=True).exists()
+        logger.info(f'User {username} logged in successfully. Needs privacy policy: {needs_privacy_policy}')
+        return Response({
+            'token': token.key,
+            'needs_privacy_policy': needs_privacy_policy
+        }, status=status.HTTP_200_OK)
 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
@@ -129,23 +128,18 @@ class GoogleLoginView(views.APIView):
             )
 
             if created:
-                # Create UserProfile with default privacy_policy_accepted=False
-                UserProfile.objects.create(user=user, privacy_policy_accepted=False)
+                UserProfile.objects.create(user=user)
                 logger.info(f'New user created with Google sign-in: {email}')
             else:
                 logger.info(f'User {email} logged in with Google sign-in.')
 
             token, _ = Token.objects.get_or_create(user=user)
-            try:
-                profile = UserProfile.objects.get(user=user)
-                needs_privacy_policy = not profile.privacy_policy_accepted
-            except UserProfile.DoesNotExist:
-                logger.warning(f"No UserProfile found for Google user: {email}")
-                needs_privacy_policy = True
+            needs_privacy_policy = not PrivacyPolicyAcceptance.objects.filter(user=user, accepted=True).exists()
+            logger.info(f'Google login for {email}. Needs privacy policy: {needs_privacy_policy}')
             return Response({
                 'token': token.key,
                 'needs_privacy_policy': needs_privacy_policy
-            })
+            }, status=status.HTTP_200_OK)
         except ValueError as e:
             logger.error(f'Google token verification failed: {e}')
             return Response({'error': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)

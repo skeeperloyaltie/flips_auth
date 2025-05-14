@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import UserProfile
+from .models import UserProfile, PrivacyPolicyAcceptance
+from subscription.models import SubscriptionPlan
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,15 +10,21 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
+    subscription_plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=SubscriptionPlan.objects.all(), source='subscription_plan', required=False, allow_null=True
+    )
+    has_accepted_privacy_policy = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
         fields = [
             'user', 'profile_picture', 'subscription_status', 'subscription_level',
             'billing_address', 'phone_number', 'category', 'bio', 'birthday',
-            'subscription_plan', 'expiry_date', 'privacy_policy_accepted',
-            'privacy_policy_accepted_date'
+            'subscription_plan_id', 'expiry_date', 'has_accepted_privacy_policy'
         ]
+
+    def get_has_accepted_privacy_policy(self, obj):
+        return PrivacyPolicyAcceptance.objects.filter(user=obj.user, accepted=True).exists()
 
 class UpdateUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,6 +34,15 @@ class UpdateUserSerializer(serializers.ModelSerializer):
 class UpdatePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if not any(char.isdigit() for char in value):
+            raise serializers.ValidationError("Password must contain at least one digit.")
+        if not any(char.isalpha() for char in value):
+            raise serializers.ValidationError("Password must contain at least one letter.")
+        return value
 
 class DeleteAccountSerializer(serializers.Serializer):
     confirm = serializers.BooleanField(required=True)

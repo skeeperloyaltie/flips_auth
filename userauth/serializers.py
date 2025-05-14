@@ -18,17 +18,27 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'privacy_policy_accepted', 'privacy_policy_accepted_date'
         )
 
+import logging
+import re
+from django.contrib.auth.models import User
+from django.db import transaction
+from rest_framework import serializers
+from userprofile.models import UserProfile, PrivacyPolicyAcceptance
+from userprofile.serializers import UserProfileSerializer
+
+logger = logging.getLogger(__name__)
+
 class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(required=True)
+    profile = UserProfileSerializer(required=False, partial=True)
 
     class Meta:
         model = User
-        fields = (
-            'id', 'username', 'email', 'password', 'profile'
-        )
+        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'profile')
         extra_kwargs = {
             'password': {'write_only': True},
-            'email': {'required': True}
+            'email': {'required': True},
+            'first_name': {'required': False},
+            'last_name': {'required': False}
         }
 
     def validate_email(self, value):
@@ -61,11 +71,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         logger.debug(f"Creating user with data: {validated_data}")
-        profile_data = validated_data.pop('profile')
-        # Ensure privacy_policy_accepted is False by default if not provided
-        profile_data.setdefault('privacy_policy_accepted', False)
-        profile_data.setdefault('privacy_policy_accepted_date', None)
-
+        profile_data = validated_data.pop('profile', {})
         with transaction.atomic():
             user = User.objects.create_user(**validated_data)
             UserProfile.objects.create(user=user, **profile_data)
@@ -73,24 +79,7 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def to_representation(self, instance):
-        profile_data = {
-            'phone_number': instance.profile.phone_number,
-            'category': instance.profile.category,
-            'bio': instance.profile.bio,
-            'profile_picture': instance.profile.profile_picture.url if instance.profile.profile_picture else '',
-            'subscription_status': instance.profile.subscription_status,
-            'subscription_level': instance.profile.subscription_level,
-            'billing_address': instance.profile.billing_address,
-            'birthday': instance.profile.birthday,
-            'subscription_plan': instance.profile.subscription_plan.id if instance.profile.subscription_plan else None,
-            'expiry_date': instance.profile.expiry_date,
-            'privacy_policy_accepted': instance.profile.privacy_policy_accepted,
-            'privacy_policy_accepted_date': instance.profile.privacy_policy_accepted_date,
-        }
-
-        return {
-            'id': instance.id,
-            'username': instance.username,
-            'email': instance.email,
-            'profile': profile_data
-        }
+        representation = super().to_representation(instance)
+        profile = UserProfileSerializer(instance.profile).data
+        representation['profile'] = profile
+        return representation

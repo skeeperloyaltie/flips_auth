@@ -174,7 +174,7 @@ class VerifyResetTokenView(APIView):
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import UserProfile
+from .models import PrivacyPolicyAcceptance
 from django.utils import timezone
 import logging
 
@@ -184,17 +184,17 @@ class AcceptPrivacyPolicyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        logger.debug(f"Accept privacy policy attempt for user: {request.user.username}")
+        logger.debug(f"Accept privacy policy attempt. User: {request.user}, Authenticated: {request.user.is_authenticated}, Token: {request.META.get('HTTP_AUTHORIZATION')}")
         try:
-            profile = UserProfile.objects.get(user=request.user)
-            profile.privacy_policy_accepted = True
-            profile.privacy_policy_accepted_date = timezone.now()
-            profile.save()
-            logger.info(f"Privacy policy accepted by user: {request.user.username}")
+            PrivacyPolicyAcceptance.objects.create(
+                user=request.user,
+                email=request.user.email,
+                accepted=True,
+                accepted_date=timezone.now(),
+                policy_version="1.0"
+            )
+            logger.info(f"Privacy policy accepted by user: {request.user.username}, email: {request.user.email}")
             return Response({'message': 'Privacy policy accepted'}, status=status.HTTP_200_OK)
-        except UserProfile.DoesNotExist:
-            logger.error(f"UserProfile not found for user: {request.user.username}")
-            return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
             logger.error(f"Error accepting privacy policy for user: {request.user.username}: {str(e)}")
             return Response({'error': 'Failed to accept privacy policy'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

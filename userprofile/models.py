@@ -20,8 +20,19 @@ class UserProfile(models.Model):
         SubscriptionPlan, on_delete=models.SET_NULL, null=True, blank=True, related_name='user_profiles'
     )
     expiry_date = models.DateTimeField(null=True, blank=True)
-    privacy_policy_accepted = models.BooleanField(default=False)
-    privacy_policy_accepted_date = models.DateTimeField(null=True, blank=True)
+    # Remove privacy policy fields
+    # privacy_policy_accepted = models.BooleanField(default=False)
+    # privacy_policy_accepted_date = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.user.username
+
+class PrivacyPolicyAcceptance(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='privacy_policy_acceptances')
+    email = models.EmailField()
+    accepted = models.BooleanField(default=True)
+    accepted_date = models.DateTimeField(auto_now_add=True)
+    policy_version = models.CharField(max_length=20, blank=True, null=True)  # Optional: track policy version
+
+    def __str__(self):
+        return f"{self.user.username} - Accepted: {self.accepted} on {self.accepted_date}"
