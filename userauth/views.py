@@ -9,8 +9,6 @@ from rest_framework import generics, permissions, status, views
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 from .serializers import UserSerializer
 from .models import VerificationToken
 from userprofile.models import UserProfile
@@ -23,8 +21,6 @@ handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
-
-from rest_framework.authtoken.models import Token
 
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -39,7 +35,10 @@ class CreateUserView(generics.CreateAPIView):
             logger.debug(f"Validated data for user creation: {validated_data}")
 
             user = serializer.save(is_active=False)
-            UserProfile.objects.get_or_create(user=user)
+            UserProfile.objects.get_or_create(
+                user=user,
+                defaults={'privacy_policy_accepted': False}  # Explicitly set
+            )
             logger.info(f"User {user.username} created successfully.")
 
             token = str(uuid.uuid4())
@@ -53,7 +52,6 @@ class CreateUserView(generics.CreateAPIView):
             )
             logger.info(f"Verification email sent to {user.email} for user {user.username}.")
 
-            # Generate and return auth token
             auth_token, created = Token.objects.get_or_create(user=user)
             return Response({
                 'token': auth_token.key,
@@ -62,6 +60,8 @@ class CreateUserView(generics.CreateAPIView):
         except Exception as e:
             logger.error(f"Unexpected error during user creation: {str(e)}", exc_info=True)
             raise
+
+# Rest of the views remain unchanged
 class VerifyEmailView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -103,12 +103,13 @@ class LoginView(views.APIView):
             return Response({'error': 'Account not verified. Please check your email.'}, status=status.HTTP_403_FORBIDDEN)
 
         token, created = Token.objects.get_or_create(user=user)
-        needs_privacy_policy = not PrivacyPolicyAcceptance.objects.filter(user=user, accepted=True).exists()
+        needs_privacy_policy = not user.profile.privacy_policy_accepted  # Updated to check UserProfile
         logger.info(f'User {username} logged in successfully. Needs privacy policy: {needs_privacy_policy}')
         return Response({
             'token': token.key,
             'needs_privacy_policy': needs_privacy_policy
         }, status=status.HTTP_200_OK)
+
 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()

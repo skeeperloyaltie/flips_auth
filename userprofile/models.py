@@ -9,6 +9,8 @@ class UserProfile(models.Model):
     subscription_level = models.CharField(max_length=50, null=True, blank=True)
     billing_address = models.TextField(null=True, blank=True)
     phone_number = models.CharField(max_length=15, blank=True)
+    privacy_policy_accepted = models.BooleanField(default=False)  # Set default to False
+
     category = models.CharField(
         max_length=20,
         choices=[('Student', 'Student'), ('Professional', 'Professional'), ('Associate', 'Associate')],
