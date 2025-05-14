@@ -3,7 +3,6 @@ from .views import UserSubscriptionStatusView, PaymentMethodsView, PaymentPageVi
     CheckUserSubscriptionView, VerifyPaymentAPIView, UserPaymentHistoryView
 
 urlpatterns = [
-
     path('verify-subscription/', UserSubscriptionStatusView.as_view(), name='verify-subscription'),
     path('methods/', PaymentMethodsView.as_view(), name='payment-methods'),
     path('verification/', VerificationPageView.as_view(), name='verification-page'),

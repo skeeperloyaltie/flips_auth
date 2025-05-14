@@ -38,6 +38,7 @@ class CreateUserView(generics.CreateAPIView):
             logger.debug(f"Validated data for user creation: {validated_data}")
 
             user = serializer.save(is_active=False)
+            UserProfile.objects.get_or_create(user=user, defaults={'privacy_policy_accepted': False})  # Add this
             logger.info(f"User {user.username} created successfully.")
 
             token = str(uuid.uuid4())
@@ -50,9 +51,6 @@ class CreateUserView(generics.CreateAPIView):
                 [user.email],
             )
             logger.info(f"Verification email sent to {user.email} for user {user.username}.")
-        except serializers.ValidationError as ve:
-            logger.error(f"Validation error during user creation: {ve.detail}")
-            raise
         except Exception as e:
             logger.error(f"Unexpected error during user creation: {str(e)}", exc_info=True)
             raise

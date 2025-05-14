@@ -184,6 +184,7 @@ class AcceptPrivacyPolicyView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
+        logger.debug(f"Accept privacy policy attempt for user: {request.user.username}")
         try:
             profile = UserProfile.objects.get(user=request.user)
             profile.privacy_policy_accepted = True
