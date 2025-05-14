@@ -47,3 +47,5 @@ channels
 channels-redis
 fpdf
 reportlab
+google-auth 
+google-auth-oauthlib
