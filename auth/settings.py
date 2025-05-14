@@ -146,18 +146,14 @@ ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 
 # Email settings with OAuth2
-EMAIL_BACKEND = "auth.email_backend.GmailOAuth2EmailBackend"  # Custom backend
+# Email settings with Gmail SMTP
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-GOOGLE_OAUTH2_CLIENT_ID = "29044843643-87a8ble1vhtj1onsldk2db7hlaj9jk2f.apps.googleusercontent.com"
-GOOGLE_OAUTH2_CLIENT_SECRET = "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"
-GOOGLE_OAUTH2_TOKEN_URI = "https://oauth2.googleapis.com/token"
-GOOGLE_OAUTH2_SCOPES = ["https://mail.google.com/"]
-EMAIL_FROM = "info.flipsinteligence@gmail.com"  # The Gmail account to send emails from
-
-# Store refresh token securely (e.g., in environment variable or file)
-GOOGLE_OAUTH2_REFRESH_TOKEN = os.getenv("GOOGLE_OAUTH2_REFRESH_TOKEN", "")
+EMAIL_HOST_USER = "info.flipsinteligence@gmail.com"
+EMAIL_HOST_PASSWORD = "osob wgfo rmag rnma"  # Replace with Gmail App Password
+EMAIL_FROM = "info.flipsinteligence@gmail.com"
 
 TEMPLATES = [
     {
