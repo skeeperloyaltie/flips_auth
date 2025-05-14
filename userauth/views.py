@@ -1,5 +1,6 @@
 import logging
 import uuid
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.core.mail import send_mail
 from django.urls import reverse
@@ -12,18 +13,18 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from .serializers import UserSerializer
 from .models import VerificationToken
-from userprofile.models import UserProfile, PrivacyPolicyAcceptance
-from userprofile.serializers import UserProfileSerializer
+from userprofile.models import UserProfile
 
 User = get_user_model()
 
-# Configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
+
+from rest_framework.authtoken.models import Token
 
 class CreateUserView(generics.CreateAPIView):
     serializer_class = UserSerializer
@@ -47,14 +48,20 @@ class CreateUserView(generics.CreateAPIView):
             send_mail(
                 'Verify your email',
                 f'Click on the link to verify your email: {verification_link}',
-                'FlipsOrganization',
+                settings.EMAIL_FROM,
                 [user.email],
             )
             logger.info(f"Verification email sent to {user.email} for user {user.username}.")
+
+            # Generate and return auth token
+            auth_token, created = Token.objects.get_or_create(user=user)
+            return Response({
+                'token': auth_token.key,
+                'message': 'User created successfully. Please verify your email.'
+            }, status=status.HTTP_201_CREATED)
         except Exception as e:
             logger.error(f"Unexpected error during user creation: {str(e)}", exc_info=True)
             raise
-
 class VerifyEmailView(views.APIView):
     permission_classes = [permissions.AllowAny]
 

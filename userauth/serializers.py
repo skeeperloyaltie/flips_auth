@@ -23,7 +23,7 @@ import re
 from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework import serializers
-from userprofile.models import UserProfile, PrivacyPolicyAcceptance
+from userprofile.models import UserProfile
 from userprofile.serializers import UserProfileSerializer
 
 logger = logging.getLogger(__name__)
