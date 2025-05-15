@@ -2,16 +2,13 @@ from django.core.management.base import BaseCommand
 from subscription.models import SubscriptionPlan
 import uuid
 
-
 class Command(BaseCommand):
     help = "Clears existing subscription plans and adds initial subscription plans to the database"
 
     def handle(self, *args, **options):
-        # Delete all existing subscription plans
         SubscriptionPlan.objects.all().delete()
         self.stdout.write(self.style.SUCCESS("Successfully deleted all existing subscription plans"))
 
-        # Define the updated plans
         plans = [
             {
                 "name": "free",
@@ -23,7 +20,9 @@ class Command(BaseCommand):
                     "- Basic alerts (once a day notifications).\n"
                     "- Upgrade prompts available on the dashboard."
                 ),
-                "planID": uuid.uuid4()
+                "planID": uuid.uuid4(),
+                "duration_days": 30,
+                "is_promotion_active": False
             },
             {
                 "name": "corporate",
@@ -40,7 +39,9 @@ class Command(BaseCommand):
                     "- API access and basic GIS layers: KES 5,000/month\n"
                     "- Internal system integration: KES 3,000/month."
                 ),
-                "planID": uuid.uuid4()
+                "planID": uuid.uuid4(),
+                "duration_days": 30,
+                "is_promotion_active": True  # Example promotion
             },
             {
                 "name": "government",
@@ -63,11 +64,12 @@ class Command(BaseCommand):
                     "Discounts:\n"
                     "- 15-25% off for annual subscriptions."
                 ),
-                "planID": uuid.uuid4()
+                "planID": uuid.uuid4(),
+                "duration_days": 30,
+                "is_promotion_active": False
             },
         ]
 
-        # Create each subscription plan
         for plan in plans:
             SubscriptionPlan.objects.create(**plan)
             self.stdout.write(self.style.SUCCESS(f'Successfully added: {plan["name"]}'))

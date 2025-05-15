@@ -7,7 +7,8 @@ class SubscriptionPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SubscriptionPlan
-        fields = ['id', 'name', 'price', 'description', 'is_promotion_active', 'is_addon']  # Include is_addon in fields
+        fields = ['id', 'name', 'price', 'description', 'planID', 'is_promotion_active', 'duration_days', 'is_addon']
+
 
     def get_is_promotion_active(self, obj):
         # Example of a method that might check some condition

@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import PaymentMethod, UserPayment
 from subscription.models import SubscriptionPlan
+from .serializers import SubscriptionPlanSerializer
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,5 +19,12 @@ class UserPaymentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserPayment
-        fields = ['id', 'payment_method', 'plan', 'payment_type', 'unique_reference', 'transaction_id', 'amount', 'status', 'is_verified', 'created_at', 'verified_at']
-        read_only_fields = ['user', 'unique_reference', 'transaction_id', 'status', 'is_verified', 'created_at', 'verified_at']
+        fields = [
+            'id', 'payment_method', 'plan', 'payment_type', 'unique_reference',
+            'transaction_id', 'amount', 'paybill_number', 'account_number',
+            'status', 'is_verified', 'created_at', 'verified_at'
+        ]
+        read_only_fields = [
+            'user', 'unique_reference', 'transaction_id', 'status',
+            'is_verified', 'created_at', 'verified_at', 'paybill_number', 'account_number'
+        ]

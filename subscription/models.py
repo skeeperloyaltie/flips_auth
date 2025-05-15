@@ -9,7 +9,8 @@ class SubscriptionPlan(models.Model):
     description = models.TextField()
     planID = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     is_addon = models.BooleanField(default=False)
-    duration_days = models.IntegerField(default=30)  # New field for subscription duration
+    duration_days = models.IntegerField(default=30)
+    is_promotion_active = models.BooleanField(default=False)  # For front-end badge
 
     def __str__(self):
         return self.name
@@ -19,7 +20,7 @@ class UserSubscription(models.Model):
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE, related_name='subscribers')
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(null=True, blank=True)
-    active = models.BooleanField(default=False)  # Default to inactive until payment is verified
+    active = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if not self.end_date and self.active:
