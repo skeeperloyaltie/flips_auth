@@ -171,10 +171,11 @@ class VerifyResetTokenView(APIView):
         except (TypeError, ValueError, OverflowError, User.DoesNotExist):
             return Response({'error': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
         
+# userprofile/views.py
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .models import PrivacyPolicyAcceptance
+from .models import PrivacyPolicyAcceptance, UserProfile
 from django.utils import timezone
 import logging
 
@@ -186,6 +187,7 @@ class AcceptPrivacyPolicyView(APIView):
     def post(self, request):
         logger.debug(f"Accept privacy policy attempt. User: {request.user}, Authenticated: {request.user.is_authenticated}, Token: {request.META.get('HTTP_AUTHORIZATION')}")
         try:
+            # Create or update PrivacyPolicyAcceptance record
             PrivacyPolicyAcceptance.objects.create(
                 user=request.user,
                 email=request.user.email,
@@ -193,6 +195,16 @@ class AcceptPrivacyPolicyView(APIView):
                 accepted_date=timezone.now(),
                 policy_version="1.0"
             )
+            # Update UserProfile.privacy_policy_accepted
+            try:
+                profile = UserProfile.objects.get(user=request.user)
+                profile.privacy_policy_accepted = True
+                profile.save()
+                logger.info(f"UserProfile.privacy_policy_accepted updated for user: {request.user.username}")
+            except UserProfile.DoesNotExist:
+                logger.error(f"UserProfile not found for user: {request.user.username}")
+                return Response({'error': 'User profile not found'}, status=status.HTTP_404_NOT_FOUND)
+
             logger.info(f"Privacy policy accepted by user: {request.user.username}, email: {request.user.email}")
             return Response({'message': 'Privacy policy accepted'}, status=status.HTTP_200_OK)
         except Exception as e:
