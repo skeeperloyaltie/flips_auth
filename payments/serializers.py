@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import PaymentMethod, UserPayment
 from subscription.models import SubscriptionPlan
-from .serializers import SubscriptionPlanSerializer
+from subscription.serializers import SubscriptionPlanSerializer
 
 class PaymentMethodSerializer(serializers.ModelSerializer):
     class Meta:
