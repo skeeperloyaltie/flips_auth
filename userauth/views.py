@@ -93,39 +93,27 @@ class LoginView(views.APIView):
     def post(self, request, format=None):
         data = request.data
         logger.debug(f"Login data received: {data}")
-        email = data.get('username', None)  # Treat 'username' as email
+        username = data.get('username', None)
         password = data.get('password', None)
 
-        if not email or not password:
-            logger.warning('Login attempt with missing email or password.')
-            return Response({'error': 'Email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+        if not username or not password:
+            logger.warning('Login attempt with missing username or password.')
+            return Response({'error': 'Username and password required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Find user by email (case-insensitive)
-        try:
-            user = User.objects.get(email__iexact=email)
-        except User.DoesNotExist:
-            logger.warning(f'No user found for email: {email}')
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        # Authenticate using username (from User model) and password
-        user = authenticate(username=user.username, password=password)
+        user = authenticate(username=username, password=password)
         logger.debug(f'User authentication result: {user}')
 
-        if user is None:
-            logger.warning(f'Invalid login credentials for email: {email}')
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        if not user.is_active:
-            logger.warning(f'Inactive account login attempt for email: {email}')
-            return Response({'error': 'Account not verified. Please check your email.'}, status=status.HTTP_403_FORBIDDEN)
+        if user is not None:
+            if not user.is_active:
+                logger.info(f'Login attempt for non-active user: {username}')
+                return Response({'error': 'Account is not verified. Please check your email.'}, status=status.HTTP_400_BAD_REQUEST)
+            token, created = Token.objects.get_or_create(user=user)
+            logger.info(f'User {username} logged in successfully.')
+            return Response({'token': token.key}, status=status.HTTP_200_OK)
 
-        token, created = Token.objects.get_or_create(user=user)
-        needs_privacy_policy = not user.profile.privacy_policy_accepted
-        logger.info(f'User {email} logged in successfully. Needs privacy policy: {needs_privacy_policy}')
-        return Response({
-            'token': token.key,
-            'needs_privacy_policy': needs_privacy_policy
-        }, status=status.HTTP_200_OK)
+        logger.warning(f'Invalid login credentials for user: {username}')
+        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_400_BAD_REQUEST)
 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
