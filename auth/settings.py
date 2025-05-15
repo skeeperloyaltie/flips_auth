@@ -76,6 +76,8 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "activity.middleware.UserActivityLoggerMiddleware",
     "config.middleware.TimezoneMiddleware",
+    'userauth.middleware.RestrictUnverifiedUsersMiddleware',
+
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False

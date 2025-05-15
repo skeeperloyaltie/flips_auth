@@ -61,13 +61,19 @@ class CreateUserView(generics.CreateAPIView):
             logger.error(f"Unexpected error during user creation: {str(e)}", exc_info=True)
             raise
 
-# Rest of the views remain unchanged
+from django.utils import timezone
+from datetime import timedelta
+
 class VerifyEmailView(views.APIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request, token, format=None):
         try:
             verification_token = VerificationToken.objects.get(token=token)
+            if verification_token.created_at < timezone.now() - timedelta(hours=24):
+                verification_token.delete()
+                logger.warning(f'Expired verification token: {token}')
+                return Response({'status': 'Token expired'}, status=status.HTTP_400_BAD_REQUEST)
             user = verification_token.user
             user.is_active = True
             user.save()
@@ -77,6 +83,8 @@ class VerifyEmailView(views.APIView):
         except VerificationToken.DoesNotExist:
             logger.warning(f'Invalid verification token: {token}')
             return Response({'status': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
+        
+    
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -117,24 +125,24 @@ class LoginView(views.APIView):
             logger.warning(f'No user found for email: {email}')
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Authenticate using email or username
-        user = authenticate(email=email, password=password) or authenticate(username=user.username, password=password)
-        logger.debug(f'User authentication result: {user}')
+        # Authenticate using username
+        authenticated_user = authenticate(username=user.username, password=password)
+        logger.debug(f'User authentication result: {authenticated_user}')
 
-        if user is None:
-            logger.warning(f'Invalid login credentials for email: {email}')
+        if authenticated_user is None:
+            logger.warning(f'Authentication failed for email: {email}, username: {user.username}, password_correct: {user.check_password(password)}')
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        if not user.is_active:
-            logger.info(f'Login attempt for non-active user: {email}')
-            return Response({'error': 'Account is not verified. Please check your email.'}, status=status.HTTP_403_FORBIDDEN)
-
-        token, created = Token.objects.get_or_create(user=user)
+        # Allow login regardless of is_active, but indicate verification status
+        token, created = Token.objects.get_or_create(user=authenticated_user)
         needs_privacy_policy = not user.profile.privacy_policy_accepted
-        logger.info(f'User {email} logged in successfully. Needs privacy policy: {needs_privacy_policy}')
+        is_verified = user.is_active  # True if verified, False if not
+        logger.info(f'User {email} logged in successfully. Verified: {is_verified}, Needs privacy policy: {needs_privacy_policy}')
+
         return Response({
             'token': token.key,
-            'needs_privacy_policy': needs_privacy_policy
+            'needs_privacy_policy': needs_privacy_policy,
+            'is_verified': is_verified  # New field to inform frontend of verification status
         }, status=status.HTTP_200_OK)
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
@@ -187,3 +195,47 @@ def logout(request):
     except (AttributeError, Token.DoesNotExist):
         logger.warning(f'Logout attempt failed for user: {request.user.username}')
         return Response(status=status.HTTP_400_BAD_REQUEST)
+    
+
+from rest_framework import status, permissions, views
+from django.core.mail import send_mail
+from django.conf import settings
+from django.urls import reverse
+import uuid
+from .models import VerificationToken
+
+class ResendVerificationEmailView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, format=None):
+        user = request.user
+        logger.debug(f"Resend verification email requested by user: {user.username}")
+
+        if user.is_active:
+            logger.info(f"User {user.username} is already verified.")
+            return Response({'message': 'Account is already verified.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Delete any existing verification tokens for the user
+        VerificationToken.objects.filter(user=user).delete()
+
+        # Create a new verification token
+        token = str(uuid.uuid4())
+        VerificationToken.objects.create(user=user, token=token)
+
+        # Send verification email
+        verification_link = request.build_absolute_uri(reverse('verify-email', args=[token]))
+        try:
+            send_mail(
+                'Verify your email',
+                f'Click on the link to verify your email: {verification_link}',
+                settings.EMAIL_FROM,
+                [user.email],
+                fail_silently=False,
+            )
+            logger.info(f"Verification email resent to {user.email} for user {user.username}.")
+            return Response({'message': 'Verification email sent.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
+            return Response({'error': 'Failed to send verification email.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        
