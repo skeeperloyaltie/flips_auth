@@ -17,6 +17,7 @@ import logging
 import stripe
 import requests
 from django.conf import settings
+from retrying import retry
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ class InitiatePaymentAPIView(APIView):
         try:
             plan = SubscriptionPlan.objects.get(id=plan_id)
         except SubscriptionPlan.DoesNotExist:
-            logger.error(f"Invalid plan ID: {plan_id}")
+            logger.error(f"Invalid plan ID: {plan_id} for user {user.username}")
             return Response({"error": "Invalid subscription plan."}, status=status.HTTP_400_BAD_REQUEST)
 
         active_sub = UserSubscription.objects.filter(user=user, plan=plan, active=True).first()
@@ -51,41 +52,68 @@ class InitiatePaymentAPIView(APIView):
             'plan': plan,
             'payment_type': payment_type,
             'unique_reference': unique_reference,
-            'amount': plan.price,
+            'amount': float(amount) if amount else plan.price,
             'status': 'pending',
         }
 
         if payment_type == 'card' and payment_intent_id:
             try:
-                payment_intent = stripe.PaymentIntent.create(
-                    amount=int(plan.price * 100),
-                    currency='kes',
-                    payment_method_types=['card'],
-                    metadata={'plan_id': plan_id, 'user_id': user.id}
-                )
-                logger.info(f"PaymentIntent created for user {user.username}: {payment_intent.id}")
-                return Response({
-                    "message": "Card payment initiated.",
-                    "client_secret": payment_intent.client_secret
-                }, status=status.HTTP_200_OK)
+                payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+                if payment_intent.status == 'succeeded':
+                    payment_data.update({
+                        'status': 'verified',
+                        'is_verified': True,
+                        'verified_at': timezone.now(),
+                        'transaction_id': payment_intent.id
+                    })
+                else:
+                    logger.error(f"PaymentIntent {payment_intent_id} not successful for user {user.username}")
+                    return Response({"error": "Card payment failed."}, status=status.HTTP_400_BAD_REQUEST)
             except stripe.error.StripeError as e:
                 logger.error(f"Stripe error for user {user.username}: {str(e)}")
-                return Response({"error": "Card payment initiation failed."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "Card payment processing failed."}, status=status.HTTP_400_BAD_REQUEST)
 
         elif payment_type == 'paybill':
             if not all([paybill_number, account_number, amount, transaction_id]):
                 logger.error(f"Missing Paybill fields for user {user.username}")
-                return Response({"error": "All Paybill fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": "All Paybill fields (paybill_number, account_number, amount, transaction_id) are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validate transaction_id format (10 alphanumeric characters)
+            import re
+            if not re.match(r'^[A-Z0-9]{10}$', transaction_id):
+                logger.error(f"Invalid transaction ID format: {transaction_id} for user {user.username}")
+                return Response({"error": "Transaction ID must be 10 alphanumeric characters (e.g., WSI9K8J2P3)."}, status=status.HTTP_400_BAD_REQUEST)
 
             payment_data.update({
                 'paybill_number': paybill_number,
                 'account_number': account_number,
-                'amount': amount,
-                'transaction_id': transaction_id
+                'transaction_id': transaction_id,
+                'amount': float(amount)
             })
 
         payment = UserPayment.objects.create(**payment_data)
         logger.info(f"Payment initiated for user {user.username} (Ref: {unique_reference}, Type: {payment_type})")
+
+        # For card payments, activate subscription immediately
+        if payment_type == 'card' and payment.is_verified:
+            subscription, created = UserSubscription.objects.get_or_create(
+                user=user,
+                plan=plan,
+                defaults={'active': True, 'start_date': timezone.now()}
+            )
+            if not created:
+                subscription.active = True
+                subscription.start_date = timezone.now()
+                subscription.save()
+
+            user_profile, _ = UserProfile.objects.get_or_create(user=user)
+            user_profile.subscription_status = True
+            user_profile.subscription_plan = plan
+            user_profile.subscription_level = plan.name
+            user_profile.expiry_date = subscription.end_date
+            user_profile.save()
+
+            logger.info(f"Subscription activated for user {user.username} (Plan: {plan.name})")
 
         pdf_path = self.generate_invoice_pdf(payment)
         self.send_invoice_email(payment, pdf_path)
@@ -149,7 +177,7 @@ class VerifyPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        transaction_id = request.data.get('unique_reference')  # Front-end sends transaction_id
+        transaction_id = request.data.get('unique_reference')  # Front-end sends transaction_id as unique_reference
         user = request.user
 
         try:
@@ -174,7 +202,7 @@ class VerifyPaymentAPIView(APIView):
                 return Response({"error": "Invalid transaction ID."}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             logger.error(f"Daraja API error for user {user.username}: {str(e)}")
-            return Response({"error": "Transaction verification failed."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"error": f"Transaction verification failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         payment.is_verified = True
         payment.status = "verified"
@@ -205,6 +233,7 @@ class VerifyPaymentAPIView(APIView):
             "end_date": subscription.end_date
         }, status=status.HTTP_200_OK)
 
+    @retry(stop_max_attempt_number=3, wait_fixed=2000)
     def verify_mpesa_transaction(self, transaction_id):
         # Daraja API authentication
         auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
@@ -212,26 +241,28 @@ class VerifyPaymentAPIView(APIView):
             auth_url,
             auth=(settings.MPESA_CONSUMER_KEY, settings.MPESA_CONSUMER_SECRET)
         )
+        auth_response.raise_for_status()
         access_token = auth_response.json().get('access_token')
 
         # Transaction query
         query_url = "https://sandbox.safaricom.co.ke/mpesa/transactionstatus/v1/query"
         headers = {"Authorization": f"Bearer {access_token}"}
         payload = {
-            "Initiator": "testapi",
+            "Initiator": settings.MPESA_INITIATOR_NAME,  # e.g., "testapi"
             "CommandID": "TransactionStatusQuery",
             "TransactionID": transaction_id,
             "PartyA": settings.MPESA_SHORTCODE,
             "IdentifierType": "4",  # Paybill
-            "ResultURL": "https://your-domain.com/payments/mpesa-callback/",
-            "QueueTimeOutURL": "https://your-domain.com/payments/mpesa-timeout/",
+            "ResultURL": settings.MPESA_RESULT_URL,
+            "QueueTimeOutURL": settings.MPESA_TIMEOUT_URL,
             "Remarks": "Verify payment",
             "Occasion": "Subscription"
         }
         response = requests.post(query_url, json=payload, headers=headers)
+        response.raise_for_status()
         result = response.json()
 
-        logger.debug(f"Daraja API response: {result}")
+        logger.debug(f"Daraja API response for transaction {transaction_id}: {result}")
         return result.get('ResultCode') == '0'  # Success
 
 class UserSubscriptionStatusView(APIView):
