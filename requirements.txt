@@ -49,3 +49,4 @@ fpdf
 reportlab
 google-auth 
 google-auth-oauthlib
+retrying
