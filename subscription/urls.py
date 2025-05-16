@@ -5,7 +5,7 @@ from .views import SubscriptionPlanListCreateView, check_user_subscription, subs
 
 urlpatterns = [
     path('plans/', SubscriptionPlanListCreateView.as_view(), name='subscription-plans'),
-    path('plans/<int:id>/', SubscriptionPlanDetailView.as_view(), name='plan-detail'),
+    path('plans/<int:id>/', SubscriptionPlanListCreateView.as_view(), name='subscription-plans'),
 
     path('status/', check_user_subscription, name='check-subscription-status'),
     path('subscribe/', subscribe, name='subscribe'),
