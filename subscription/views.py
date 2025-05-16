@@ -32,7 +32,7 @@ def check_user_subscription(request):
         return Response({
             'isSubscribed': True,
             'planName': subscription.plan.name,
-            'endDate': subscription.end_date
+            'endDate': subscription.end_date.isoformat()  # Ensure ISO format for frontend
         }, status=status.HTTP_200_OK)
     return Response({
         'isSubscribed': False,
@@ -55,9 +55,17 @@ def subscribe(request):
         current_subscription.active = False
         current_subscription.save()
 
+    # Create a pending subscription
+    subscription = UserSubscription.objects.create(
+        user=user,
+        plan=plan,
+        active=False  # Activate after payment verification
+    )
+    logger.info(f"Pending subscription created for user {user.username} with plan {plan.name}")
     return Response({
         'message': 'Please complete payment to activate subscription.',
-        'plan_id': plan_id
+        'plan_id': plan_id,
+        'subscription_id': subscription.id
     }, status=status.HTTP_202_ACCEPTED)
 
 @api_view(['GET'])
@@ -68,10 +76,10 @@ def get_dashboard_url(request):
     if subscription and subscription.is_active():
         plan_name = subscription.plan.name.lower().replace(' ', '-')
         return Response({
-            'url': f'{plan_name}/index.html'
+            'url': f'/dashboard/{plan_name}/index.html'  # Updated to relative path
         }, status=status.HTTP_200_OK)
     return Response({
-        'url': 'no-subscription/index.html'
+        'url': '/dashboard/no-subscription/index.html'
     }, status=status.HTTP_400_BAD_REQUEST)
 
 class SubscriptionDetailsView(APIView):
@@ -90,8 +98,7 @@ class SubscriptionDetailsView(APIView):
             if payment_verified:
                 services = (
                     ["Basic Access"] if plan.name == "free" else
-                    ["Real-time Alerts", "Basic Analytics", "Limited Historical Data"]
-                    if plan.name == "corporate" else
+                    ["Real-time Alerts", "Basic Analytics", "Limited Historical Data"] if plan.name == "corporate" else
                     ["Advanced Analytics", "Full Historical Data", "Custom Reports", "Real-time Alerts"]
                 )
                 historical_data_days = 1 if plan.name == "free" else 7 if plan.name == "corporate" else 14
@@ -104,7 +111,9 @@ class SubscriptionDetailsView(APIView):
                         "historical_data_days": historical_data_days,
                         "report_count": report_count
                     },
-                    "pricing": f"KES {plan.price}/month" if plan.price > 0 else "Free"
+                    "pricing": f"KES {plan.price}/month" if plan.price > 0 else "Free",
+                    "start_date": subscription.start_date.isoformat(),
+                    "end_date": subscription.end_date.isoformat() if subscription.end_date else None
                 }
                 logger.info(f"Subscription details for user {user.username}: {details}")
                 return Response(details, status=status.HTTP_200_OK)

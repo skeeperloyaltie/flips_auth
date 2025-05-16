@@ -140,12 +140,10 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-SOCIALACCOUNT_QUERY_EMAIL = True
-ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+SOCIALACCOUNT_QUERY_EMAIL = True
 
 # Email settings with OAuth2
 # Email settings with Gmail SMTP
@@ -252,12 +250,18 @@ PESAPAL_CONSUMER_KEY = "qkio1BGGYAXTu2JOfm7XSXNruoZsrqEW"
 PESAPAL_CONSUMER_SECRET = "osGQ364R49cXKeOYSpaOnT++rHs="
 PESAPAL_CALLBACK_URL = "https://api.flipsintel.org/payments/payment-callback/"
 
-DARAJA_CONSUMER_KEY = os.getenv("DARAJA_CONSUMER_KEY", "your_daraja_consumer_key")
-DARAJA_CONSUMER_SECRET = os.getenv("DARAJA_CONSUMER_SECRET", "your_daraja_consumer_secret")
-DARAJA_CALLBACK_URL = os.getenv("DARAJA_CALLBACK_URL", "https://api.flipsintel.org/payments/payment_callback")
-DARAJA_SHORT_CODE = os.getenv("DARAJA_SHORT_CODE", "your_short_code")
-DARAJA_INITIATOR = os.getenv("DARAJA_INITIATOR", "your_initiator_username")
-DARAJA_SECURITY_CREDENTIAL = os.getenv("DARAJA_SECURITY_CREDENTIAL", "your_encrypted_security_credential")
+# DATABASE_NAME=flipsintel
+# DATABASE_USER=flipsintel
+# DATABASE_PASSWORD=1391
+# DATABASE_HOST=db
+# DATABASE_PORT=5432
+# STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+# MPESA_CONSUMER_KEY=your_daraja_consumer_key
+# MPESA_CONSUMER_SECRET=your_daraja_consumer_secret
+# MPESA_SHORTCODE=123456
+# MPESA_INITIATOR_NAME=testapi
+# MPESA_RESULT_URL=https://api.flipsintel.org/payments/callback/
+# MPESA_TIMEOUT_URL=https://api.flipsintel.org/payments/timeout/
 
 NLTK_DATA_DIR = os.path.join(BASE_DIR, "nltk_data")
 SPACY_MODEL_NAME = "en_core_web_sm"

@@ -33,7 +33,6 @@ class InitiatePaymentAPIView(APIView):
         account_number = request.data.get('account_number')
         amount = request.data.get('amount')
         transaction_id = request.data.get('transaction_id')
-        payment_intent_id = request.data.get('payment_intent_id')
 
         try:
             plan = SubscriptionPlan.objects.get(id=plan_id)
@@ -46,84 +45,65 @@ class InitiatePaymentAPIView(APIView):
             logger.info(f"User {user.username} already subscribed to {plan.name}")
             return Response({"message": "You are already subscribed to this plan."}, status=status.HTTP_200_OK)
 
-        unique_reference = str(uuid.uuid4())
-        payment_data = {
-            'user': user,
-            'plan': plan,
-            'payment_type': payment_type,
-            'unique_reference': unique_reference,
-            'amount': float(amount) if amount else plan.price,
-            'status': 'pending',
-        }
-
-        if payment_type == 'card' and payment_intent_id:
+        if payment_type == 'card':
             try:
-                payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-                if payment_intent.status == 'succeeded':
-                    payment_data.update({
-                        'status': 'verified',
-                        'is_verified': True,
-                        'verified_at': timezone.now(),
-                        'transaction_id': payment_intent.id
-                    })
-                else:
-                    logger.error(f"PaymentIntent {payment_intent_id} not successful for user {user.username}")
-                    return Response({"error": "Card payment failed."}, status=status.HTTP_400_BAD_REQUEST)
+                payment_intent = stripe.PaymentIntent.create(
+                    amount=int(plan.price * 100),  # Convert to cents
+                    currency='kes',
+                    metadata={'user_id': user.id, 'plan_id': plan_id}
+                )
+                logger.info(f"Stripe PaymentIntent created for user {user.username}: {payment_intent.id}")
+                return Response({
+                    "message": "Card payment initiated.",
+                    "client_secret": payment_intent.client_secret,
+                    "payment_intent_id": payment_intent.id
+                }, status=status.HTTP_200_OK)
             except stripe.error.StripeError as e:
                 logger.error(f"Stripe error for user {user.username}: {str(e)}")
-                return Response({"error": "Card payment processing failed."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         elif payment_type == 'paybill':
             if not all([paybill_number, account_number, amount, transaction_id]):
                 logger.error(f"Missing Paybill fields for user {user.username}")
                 return Response({"error": "All Paybill fields (paybill_number, account_number, amount, transaction_id) are required."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Validate transaction_id format (10 alphanumeric characters)
             import re
             if not re.match(r'^[A-Z0-9]{10}$', transaction_id):
                 logger.error(f"Invalid transaction ID format: {transaction_id} for user {user.username}")
                 return Response({"error": "Transaction ID must be 10 alphanumeric characters (e.g., WSI9K8J2P3)."}, status=status.HTTP_400_BAD_REQUEST)
 
-            payment_data.update({
+            if float(amount) != float(plan.price):
+                logger.error(f"Amount mismatch for user {user.username}: {amount} != {plan.price}")
+                return Response({"error": "Amount must match plan price."}, status=status.HTTP_400_BAD_REQUEST)
+
+            unique_reference = transaction_id  # Use transaction_id as unique_reference
+            payment_data = {
+                'user': user,
+                'plan': plan,
+                'payment_type': 'paybill',
+                'unique_reference': unique_reference,
+                'transaction_id': transaction_id,
                 'paybill_number': paybill_number,
                 'account_number': account_number,
-                'transaction_id': transaction_id,
-                'amount': float(amount)
-            })
+                'amount': float(amount),
+                'status': 'pending',
+            }
 
-        payment = UserPayment.objects.create(**payment_data)
-        logger.info(f"Payment initiated for user {user.username} (Ref: {unique_reference}, Type: {payment_type})")
+            payment = UserPayment.objects.create(**payment_data)
+            logger.info(f"Paybill payment initiated for user {user.username} (Ref: {unique_reference})")
 
-        # For card payments, activate subscription immediately
-        if payment_type == 'card' and payment.is_verified:
-            subscription, created = UserSubscription.objects.get_or_create(
-                user=user,
-                plan=plan,
-                defaults={'active': True, 'start_date': timezone.now()}
-            )
-            if not created:
-                subscription.active = True
-                subscription.start_date = timezone.now()
-                subscription.save()
+            pdf_path = self.generate_invoice_pdf(payment)
+            self.send_invoice_email(payment, pdf_path)
+            os.unlink(pdf_path)
 
-            user_profile, _ = UserProfile.objects.get_or_create(user=user)
-            user_profile.subscription_status = True
-            user_profile.subscription_plan = plan
-            user_profile.subscription_level = plan.name
-            user_profile.expiry_date = subscription.end_date
-            user_profile.save()
+            return Response({
+                "message": "Paybill payment initiated successfully. Please verify your payment.",
+                "unique_reference": unique_reference,
+                "payment": UserPaymentSerializer(payment).data
+            }, status=status.HTTP_201_CREATED)
 
-            logger.info(f"Subscription activated for user {user.username} (Plan: {plan.name})")
-
-        pdf_path = self.generate_invoice_pdf(payment)
-        self.send_invoice_email(payment, pdf_path)
-        os.unlink(pdf_path)
-
-        return Response({
-            "message": "Payment initiated successfully.",
-            "unique_reference": unique_reference,
-            "payment": UserPaymentSerializer(payment).data
-        }, status=status.HTTP_201_CREATED)
+        logger.error(f"Invalid payment type for user {user.username}: {payment_type}")
+        return Response({"error": "Invalid payment type."}, status=status.HTTP_400_BAD_REQUEST)
 
     def generate_invoice_pdf(self, payment):
         pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
@@ -144,24 +124,26 @@ class InitiatePaymentAPIView(APIView):
         return pdf_path
 
     def send_invoice_email(self, payment, pdf_path):
-        subject = "Payment Invoice"
+        subject = "FLIPS Payment Invoice"
         message = f"""
-        Dear {payment.user.get_full_name() or payment.user.username},
+Dear {payment.user.get_full_name() or payment.user.username},
 
-        Thank you for initiating your payment. Please find your invoice attached.
+Thank you for initiating your payment for the {payment.plan.name} plan. Please find your invoice attached.
 
-        Payment Details:
-        - Plan: {payment.plan.name}
-        - Amount: KES {payment.amount}
-        - Invoice ID: {payment.unique_reference}
-        - Payment Type: {payment.get_payment_type_display()}
-        """
+Payment Details:
+- Plan: {payment.plan.name}
+- Amount: KES {payment.amount}
+- Invoice ID: {payment.unique_reference}
+- Payment Type: {payment.get_payment_type_display()}
+"""
         if payment.payment_type == 'paybill':
             message += f"""
-        - Paybill Number: {payment.paybill_number}
-        - Account Number: {payment.account_number}
-        - Transaction ID: {payment.transaction_id}
-        """
+- Paybill Number: {payment.paybill_number}
+- Account Number: {payment.account_number}
+- Transaction ID: {payment.transaction_id}
+
+Please verify your payment using the Transaction ID in the verification portal.
+"""
         message += "\nRegards,\nFLIPS Team"
         email = EmailMessage(
             subject=subject,
@@ -177,66 +159,106 @@ class VerifyPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        transaction_id = request.data.get('unique_reference')  # Front-end sends transaction_id as unique_reference
+        unique_reference = request.data.get('unique_reference')
         user = request.user
 
         try:
             payment = UserPayment.objects.get(
-                transaction_id=transaction_id,
-                user=user,
-                payment_type='paybill'
+                unique_reference=unique_reference,
+                user=user
             )
         except UserPayment.DoesNotExist:
-            logger.error(f"Payment not found for user {user.username} (Transaction ID: {transaction_id})")
+            logger.error(f"Payment not found for user {user.username} (Ref: {unique_reference})")
             return Response({"error": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
 
         if payment.is_verified:
-            logger.info(f"Payment already verified for user {user.username} (Transaction ID: {transaction_id})")
-            return Response({"error": "Payment already verified."}, status=status.HTTP_400_BAD_REQUEST)
+            logger.info(f"Payment already verified for user {user.username} (Ref: {unique_reference})")
+            return Response({"message": "Payment already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Verify with Daraja API
-        try:
-            is_valid = self.verify_mpesa_transaction(transaction_id)
-            if not is_valid:
-                logger.error(f"Invalid M-Pesa transaction for user {user.username}: {transaction_id}")
-                return Response({"error": "Invalid transaction ID."}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            logger.error(f"Daraja API error for user {user.username}: {str(e)}")
-            return Response({"error": f"Transaction verification failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if payment.payment_type == 'card':
+            try:
+                payment_intent = stripe.PaymentIntent.retrieve(payment.transaction_id)
+                if payment_intent.status == 'succeeded':
+                    payment.is_verified = True
+                    payment.status = 'verified'
+                    payment.verified_at = timezone.now()
+                    payment.save()
 
-        payment.is_verified = True
-        payment.status = "verified"
-        payment.verified_at = timezone.now()
-        payment.save()
+                    subscription, created = UserSubscription.objects.get_or_create(
+                        user=user,
+                        plan=payment.plan,
+                        defaults={'active': True, 'start_date': timezone.now()}
+                    )
+                    if not created:
+                        subscription.active = True
+                        subscription.start_date = timezone.now()
+                        subscription.save()
 
-        subscription, created = UserSubscription.objects.get_or_create(
-            user=user,
-            plan=payment.plan,
-            defaults={'active': True, 'start_date': timezone.now()}
-        )
-        if not created:
-            subscription.active = True
-            subscription.start_date = timezone.now()
-            subscription.save()
+                    user_profile, _ = UserProfile.objects.get_or_create(user=user)
+                    user_profile.subscription_status = True
+                    user_profile.subscription_plan = payment.plan
+                    user_profile.subscription_level = payment.plan.name
+                    user_profile.expiry_date = subscription.end_date
+                    user_profile.save()
 
-        user_profile, _ = UserProfile.objects.get_or_create(user=user)
-        user_profile.subscription_status = True
-        user_profile.subscription_plan = payment.plan
-        user_profile.subscription_level = payment.plan.name
-        user_profile.expiry_date = subscription.end_date
-        user_profile.save()
+                    logger.info(f"Card payment verified for user {user.username} (Ref: {unique_reference})")
+                    return Response({
+                        "success": "Card payment verified successfully.",
+                        "plan": payment.plan.name,
+                        "end_date": subscription.end_date.isoformat()
+                    }, status=status.HTTP_200_OK)
+                else:
+                    logger.error(f"Card payment not succeeded for user {user.username}: {payment_intent.status}")
+                    return Response({"error": "Card payment not completed."}, status=status.HTTP_400_BAD_REQUEST)
+            except stripe.error.StripeError as e:
+                logger.error(f"Stripe error for user {user.username}: {str(e)}")
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        logger.info(f"Payment verified for user {user.username} (Transaction ID: {transaction_id})")
-        return Response({
-            "success": "Payment verified successfully.",
-            "plan": payment.plan.name,
-            "end_date": subscription.end_date
-        }, status=status.HTTP_200_OK)
+        elif payment.payment_type == 'paybill':
+            try:
+                is_valid = self.verify_mpesa_transaction(unique_reference)
+                if not is_valid:
+                    logger.error(f"Invalid M-Pesa transaction for user {user.username}: {unique_reference}")
+                    return Response({"error": "Invalid transaction ID."}, status=status.HTTP_400_BAD_REQUEST)
+
+                payment.is_verified = True
+                payment.status = "verified"
+                payment.verified_at = timezone.now()
+                payment.save()
+
+                subscription, created = UserSubscription.objects.get_or_create(
+                    user=user,
+                    plan=payment.plan,
+                    defaults={'active': True, 'start_date': timezone.now()}
+                )
+                if not created:
+                    subscription.active = True
+                    subscription.start_date = timezone.now()
+                    subscription.save()
+
+                user_profile, _ = UserProfile.objects.get_or_create(user=user)
+                user_profile.subscription_status = True
+                user_profile.subscription_plan = payment.plan
+                user_profile.subscription_level = payment.plan.name
+                user_profile.expiry_date = subscription.end_date
+                user_profile.save()
+
+                logger.info(f"Paybill payment verified for user {user.username} (Ref: {unique_reference})")
+                return Response({
+                    "success": "Paybill payment verified successfully.",
+                    "plan": payment.plan.name,
+                    "end_date": subscription.end_date.isoformat()
+                }, status=status.HTTP_200_OK)
+            except Exception as e:
+                logger.error(f"Daraja API error for user {user.username}: {str(e)}")
+                return Response({"error": f"Transaction verification failed: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        logger.error(f"Invalid payment type for user {user.username}: {payment.payment_type}")
+        return Response({"error": "Invalid payment type."}, status=status.HTTP_400_BAD_REQUEST)
 
     @retry(stop_max_attempt_number=3, wait_fixed=2000)
     def verify_mpesa_transaction(self, transaction_id):
-        # Daraja API authentication
-        auth_url = "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"
+        auth_url = "https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials"  # Production URL
         auth_response = requests.get(
             auth_url,
             auth=(settings.MPESA_CONSUMER_KEY, settings.MPESA_CONSUMER_SECRET)
@@ -244,11 +266,10 @@ class VerifyPaymentAPIView(APIView):
         auth_response.raise_for_status()
         access_token = auth_response.json().get('access_token')
 
-        # Transaction query
-        query_url = "https://sandbox.safaricom.co.ke/mpesa/transactionstatus/v1/query"
+        query_url = "https://api.safaricom.co.ke/mpesa/transactionstatus/v1/query"
         headers = {"Authorization": f"Bearer {access_token}"}
         payload = {
-            "Initiator": settings.MPESA_INITIATOR_NAME,  # e.g., "testapi"
+            "Initiator": settings.MPESA_INITIATOR_NAME,
             "CommandID": "TransactionStatusQuery",
             "TransactionID": transaction_id,
             "PartyA": settings.MPESA_SHORTCODE,
@@ -263,7 +284,7 @@ class VerifyPaymentAPIView(APIView):
         result = response.json()
 
         logger.debug(f"Daraja API response for transaction {transaction_id}: {result}")
-        return result.get('ResultCode') == '0'  # Success
+        return result.get('ResultCode') == '0'
 
 class UserSubscriptionStatusView(APIView):
     permission_classes = [IsAuthenticated]
@@ -275,7 +296,7 @@ class UserSubscriptionStatusView(APIView):
             return Response({
                 "isSubscribed": True,
                 "plan": subscription.plan.name,
-                "end_date": subscription.end_date
+                "end_date": subscription.end_date.isoformat()
             }, status=status.HTTP_200_OK)
         return Response({"isSubscribed": False}, status=status.HTTP_200_OK)
 
@@ -286,7 +307,7 @@ class UserPaymentHistoryView(APIView):
         user_payments = UserPayment.objects.filter(user=request.user).order_by('-created_at')
         serializer = UserPaymentSerializer(user_payments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-    
+
 class PaymentPageView(APIView):
     permission_classes = [IsAuthenticated]
 
