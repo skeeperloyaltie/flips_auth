@@ -17,7 +17,7 @@ rigs_url = "https://api.flipsintel.org/monitor/get-rigs/"
 # The header, including an authorization token
 headers = {
     "Content-Type": "application/json",
-    "Authorization": "Token 4da83198875885ff207c6e6c8cea91c3eddb31ec",
+    "Authorization": "Token 951127f867969f82e3be8a69e2b20568ee495a06",
 }
 
 def fetch_rigs():
