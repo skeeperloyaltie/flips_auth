@@ -9,7 +9,6 @@ services:
       - 'media-data:/app/media'
     expose:
       - '8000'
-
     command: >
       sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
              python manage.py migrate &&
@@ -36,6 +35,14 @@ services:
     restart: always
     networks:
       - backend
+      - rw08go4884kkg4g4s80co04w
+    labels:
+      - coolify.managed=true
+      - coolify.expose=true
+      - coolify.domain=api.flipsintel.org
+      - coolify.port=8000
+
+
 
   redis:
     image: 'redis:alpine'
