@@ -7,6 +7,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         SubscriptionPlan.objects.all().delete()
+        
         self.stdout.write(self.style.SUCCESS("Successfully deleted all existing subscription plans"))
 
         plans = [
