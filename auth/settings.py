@@ -190,11 +190,11 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "sk-Z9YmpK4oBj6-Vmm5Fb9tCT4UBhLn1C-
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": os.environ.get("DATABASE_NAME", "flipsintel"),
-        "USER": os.environ.get("DATABASE_USER", "flipsintel"),
-        "PASSWORD": os.environ.get("DATABASE_PASSWORD", "1391"),
-        "HOST": os.environ.get("DATABASE_HOST", "db"),
-        "PORT": os.environ.get("DATABASE_PORT", "5432"),
+        "NAME": "flipsintel",
+        "USER": "flipsintel",
+        "PASSWORD": "1391",
+        "HOST": "db",
+        "PORT": "5432",
     },
 }
 

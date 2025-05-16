@@ -23,7 +23,6 @@ class Command(BaseCommand):
                 ),
                 "planID": uuid.uuid4(),
                 "duration_days": 30,
-                # "is_promotion_active": False
             },
             {
                 "name": "corporate",
@@ -42,7 +41,6 @@ class Command(BaseCommand):
                 ),
                 "planID": uuid.uuid4(),
                 "duration_days": 30,
-                # "is_promotion_active": True  # Example promotion
             },
             {
                 "name": "government",
@@ -67,7 +65,6 @@ class Command(BaseCommand):
                 ),
                 "planID": uuid.uuid4(),
                 "duration_days": 30,
-                # "is_promotion_active": False
             },
         ]
 

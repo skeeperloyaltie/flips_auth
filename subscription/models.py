@@ -10,7 +10,6 @@ class SubscriptionPlan(models.Model):
     planID = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     is_addon = models.BooleanField(default=False)
     duration_days = models.IntegerField(default=30)
-    is_promotion_active = models.BooleanField(default=False)  
 
     def __str__(self):
         return self.name
