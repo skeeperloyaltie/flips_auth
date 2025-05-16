@@ -9,8 +9,7 @@ services:
       - 'media-data:/app/media'
     expose:
       - '8000'
-    ports:
-      - '8001:8000'
+
     command: >
       sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
              python manage.py migrate &&
