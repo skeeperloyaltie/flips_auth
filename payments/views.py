@@ -336,7 +336,6 @@ class VerifyPaymentAPIView(APIView):
             except stripe.error.StripeError as e:
                 logger.error(f"Stripe error for user {user.username}: {str(e)}")
                 return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
         elif payment.payment_type in ['paybill', 'stk_push']:
             try:
                 is_valid = self.verify_mpesa_transaction(payment.transaction_id)
