@@ -256,18 +256,14 @@ PESAPAL_CONSUMER_KEY = "qkio1BGGYAXTu2JOfm7XSXNruoZsrqEW"
 PESAPAL_CONSUMER_SECRET = "osGQ364R49cXKeOYSpaOnT++rHs="
 PESAPAL_CALLBACK_URL = "https://api.flipsintel.org/payments/payment-callback/"
 
-# DATABASE_NAME=flipsintel
-# DATABASE_USER=flipsintel
-# DATABASE_PASSWORD=1391
-# DATABASE_HOST=db
-# DATABASE_PORT=5432
-# STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
-# MPESA_CONSUMER_KEY=your_daraja_consumer_key
-# MPESA_CONSUMER_SECRET=your_daraja_consumer_secret
-# MPESA_SHORTCODE=123456
-# MPESA_INITIATOR_NAME=testapi
-# MPESA_RESULT_URL=https://api.flipsintel.org/payments/callback/
-# MPESA_TIMEOUT_URL=https://api.flipsintel.org/payments/timeout/
+# auth/settings.py
+MPESA_CONSUMER_KEY = os.environ.get('MPESA_CONSUMER_KEY', 'AdSMFiUNu2wH7LE72JMecCTvroZPGEqTAXlw2GhWhlqpYUfN')
+MPESA_CONSUMER_SECRET = os.environ.get('MPESA_CONSUMER_SECRET', 'x5gR0QIFTync5F064oRl73P2PGfAlQ9XkCm2bLBAqVGXfx5cn3Edqdko3XlXYMHN')
+MPESA_SHORTCODE = os.environ.get('MPESA_SHORTCODE', '174379')  # Sandbox Paybill
+MPESA_PASSKEY = os.environ.get('MPESA_PASSKEY', 'bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919')
+MPESA_INITIATOR_NAME = os.environ.get('MPESA_INITIATOR_NAME', 'testapi')
+MPESA_RESULT_URL = os.environ.get('MPESA_RESULT_URL', 'https://api.flipsintel.org/mpesa/callback/')
+MPESA_TIMEOUT_URL = os.environ.get('MPESA_TIMEOUT_URL', 'https://api.flipsintel.org/mpesa/timeout/')
 
 NLTK_DATA_DIR = os.path.join(BASE_DIR, "nltk_data")
 SPACY_MODEL_NAME = "en_core_web_sm"
