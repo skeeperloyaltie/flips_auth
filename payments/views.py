@@ -107,13 +107,33 @@ class InitiatePaymentAPIView(APIView):
                 logger.error(f"Missing phone number for STK Push for user {user.username}")
                 return Response({"error": "Phone number is required for STK Push."}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Normalize phone number (e.g., convert 0700123456 to +254700123456)
+            # Normalize and validate phone number
             phone_number = account_number.strip()
-            if phone_number.startswith('0'):
+            import re
+            # Match formats: +2547XXXXXXXX, 07XXXXXXXX, 7XXXXXXXX
+            if re.match(r'^\+2547[0-1][0-9]{7}$', phone_number):
+                pass  # Already in correct format
+            elif re.match(r'^07[0-1][0-9]{7}$', phone_number):
                 phone_number = '+254' + phone_number[1:]
-            elif not phone_number.startswith('+254'):
+            elif re.match(r'^7[0-1][0-9]{7}$', phone_number):
+                phone_number = '+254' + phone_number
+            else:
                 logger.error(f"Invalid phone number format: {phone_number} for user {user.username}")
-                return Response({"error": "Phone number must be in +254 format or start with 0."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    "error": "Phone number must be in format +2547XXXXXXXX, 07XXXXXXXX, or 7XXXXXXXX."
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            # Verify phone number matches UserProfile (optional, for security)
+            try:
+                user_profile = user.profile
+                if user_profile.phone_number and user_profile.phone_number != phone_number:
+                    logger.warning(f"Phone number mismatch for user {user.username}: "
+                                 f"Provided {phone_number}, Profile {user_profile.phone_number}")
+                    return Response({
+                        "error": "Provided phone number does not match your profile."
+                    }, status=status.HTTP_400_BAD_REQUEST)
+            except UserProfile.DoesNotExist:
+                logger.warning(f"No UserProfile for user {user.username}")
 
             if float(amount) != float(plan.price):
                 logger.error(f"Amount mismatch for user {user.username}: {amount} != {plan.price}")
@@ -135,6 +155,9 @@ class InitiatePaymentAPIView(APIView):
                     (settings.MPESA_SHORTCODE + settings.MPESA_PASSKEY + timestamp).encode()
                 ).decode()
 
+                # Log the phone number used
+                logger.info(f"Initiating STK Push for user {user.username} with phone {phone_number}")
+
                 # Initiate STK Push
                 stk_url = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
                 headers = {"Authorization": f"Bearer {access_token}"}
@@ -146,7 +169,7 @@ class InitiatePaymentAPIView(APIView):
                     "Amount": int(float(amount)),  # Ensure integer amount
                     "PartyA": phone_number.replace('+', ''),  # e.g., 254700123456
                     "PartyB": settings.MPESA_SHORTCODE,
-                    "PhoneNumber": phone_number.replace('+', ''),
+                    "PhoneNumber": phone_number.replace('+', ''),  # Same as PartyA
                     "CallBackURL": settings.MPESA_RESULT_URL,
                     "AccountReference": f"FLIPS_{plan.id}",
                     "TransactionDesc": f"Payment for {plan.name}"
@@ -186,7 +209,7 @@ class InitiatePaymentAPIView(APIView):
                 os.unlink(pdf_path)
 
                 return Response({
-                    "message": "STK Push initiated successfully. Please check your phone to complete the payment.",
+                    "message": f"STK Push initiated successfully to {phone_number}. Please check your phone to complete the payment.",
                     "unique_reference": unique_reference,
                     "payment": UserPaymentSerializer(payment).data
                 }, status=status.HTTP_201_CREATED)
@@ -197,6 +220,7 @@ class InitiatePaymentAPIView(APIView):
 
         logger.error(f"Invalid payment type for user {user.username}: {payment_type}")
         return Response({"error": "Invalid payment type."}, status=status.HTTP_400_BAD_REQUEST)
+
 
     def generate_invoice_pdf(self, payment):
         pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
@@ -222,21 +246,21 @@ class InitiatePaymentAPIView(APIView):
     def send_invoice_email(self, payment, pdf_path):
         subject = "FLIPS Payment Invoice"
         message = f"""
-Dear {payment.user.get_full_name() or payment.user.username},
+            Dear {payment.user.get_full_name() or payment.user.username},
 
-Thank you for initiating your payment for the {payment.plan.name} plan. Please find your invoice attached.
+            Thank you for initiating your payment for the {payment.plan.name} plan. Please find your invoice attached.
 
-Payment Details:
-- Plan: {payment.plan.name}
-- Amount: KES {payment.amount}
-- Invoice ID: {payment.unique_reference}
-- Payment Type: {payment.get_payment_type_display()}
-"""
-        if payment.payment_type in ['paybill', 'stk_push']:
-            message += f"""
-- Paybill Number: {payment.paybill_number}
-- Account Number: {payment.account_number}
-"""
+            Payment Details:
+            - Plan: {payment.plan.name}
+            - Amount: KES {payment.amount}
+            - Invoice ID: {payment.unique_reference}
+            - Payment Type: {payment.get_payment_type_display()}
+            """
+                    if payment.payment_type in ['paybill', 'stk_push']:
+                        message += f"""
+            - Paybill Number: {payment.paybill_number}
+            - Account Number: {payment.account_number}
+            """
             if payment.payment_type == 'paybill':
                 message += f"- Transaction ID: {payment.transaction_id}\n"
             else:
