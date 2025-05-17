@@ -50,3 +50,4 @@ reportlab
 google-auth 
 google-auth-oauthlib
 retrying
+whitenoise

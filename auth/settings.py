@@ -58,6 +58,8 @@ INSTALLED_APPS = [
     "config",
     "modelbuilder",
     "insurance",
+    'whitenoise.runserver_nostatic',  # Add WhiteNoise
+
 ]
 
 GDAL_LIBRARY_PATH = "/usr/lib/x86_64-linux-gnu/libgdal.so"
@@ -69,6 +71,8 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add WhiteNoise middleware
+
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -234,6 +238,8 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'  # Use WhiteNoise storage
+
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
