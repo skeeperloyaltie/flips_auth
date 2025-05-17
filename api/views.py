@@ -6,9 +6,9 @@ from rest_framework import status
 import logging
 from rest_framework.exceptions import NotAuthenticated
 from .utils import encode_to_base64, decode_from_base64
+from userprofile.models import UserProfile
 
 logger = logging.getLogger(__name__)
-# In your Django view
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -16,11 +16,23 @@ def get_user_info(request):
     logger.debug('Headers: %s', request.headers)
     logger.debug('User: %s', request.user)
 
-    # Ensure user is authenticated and log error if not
-    if request.user.is_authenticated:
-        return Response({'email': request.user.email, 'username': request.user.username, 'phone_number': request.user.phone_number}, status=status.HTTP_200_OK)
-    else:
+    # Ensure user is authenticated
+    if not request.user.is_authenticated:
         raise NotAuthenticated('Authentication credentials were not provided or are invalid.')
+
+    # Fetch phone_number from UserProfile
+    try:
+        user_profile = request.user.profile  # Access the UserProfile via the 'profile' related_name
+        phone_number = user_profile.phone_number or ''
+    except UserProfile.DoesNotExist:
+        logger.warning(f"No UserProfile found for user: {request.user.username}")
+        phone_number = ''
+
+    return Response({
+        'email': request.user.email,
+        'username': request.user.username,
+        'phone_number': phone_number
+    }, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -42,17 +54,7 @@ def decode_and_fetch(request, encoded_path):
     logger.debug(f'Decoded Path: {decoded_path}')
 
     # Add your logic to use the decoded path (e.g., check if it leads to a valid resource)
-
     return Response({'decoded_path': decoded_path}, status=status.HTTP_200_OK)
-
-
-# views.py
-
-from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-import logging
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

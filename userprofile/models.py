@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from subscription.models import SubscriptionPlan
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -9,8 +11,7 @@ class UserProfile(models.Model):
     subscription_level = models.CharField(max_length=50, null=True, blank=True)
     billing_address = models.TextField(null=True, blank=True)
     phone_number = models.CharField(max_length=15, blank=True)
-    privacy_policy_accepted = models.BooleanField(default=False)  # Set default to False
-
+    privacy_policy_accepted = models.BooleanField(default=False)
     category = models.CharField(
         max_length=20,
         choices=[('Student', 'Student'), ('Professional', 'Professional'), ('Associate', 'Associate')],
@@ -35,3 +36,16 @@ class PrivacyPolicyAcceptance(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - Accepted: {self.accepted} on {self.accepted_date}"
+
+# Signal to create UserProfile automatically when a User is created
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    try:
+        instance.profile.save()
+    except UserProfile.DoesNotExist:
+        UserProfile.objects.create(user=instance)

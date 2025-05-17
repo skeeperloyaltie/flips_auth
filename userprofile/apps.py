@@ -6,7 +6,7 @@ class UserprofileConfig(AppConfig):
     name = 'userprofile'
 
     def ready(self):
-        import userprofile.signals  # Import signals to ensure they get registered
+        import userprofile.models  # Import signals to ensure they get registered
         
         
 from django.apps import AppConfig
