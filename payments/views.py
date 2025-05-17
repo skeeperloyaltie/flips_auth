@@ -256,24 +256,24 @@ class InitiatePaymentAPIView(APIView):
             - Invoice ID: {payment.unique_reference}
             - Payment Type: {payment.get_payment_type_display()}
             """
-                    if payment.payment_type in ['paybill', 'stk_push']:
-                        message += f"""
-            - Paybill Number: {payment.paybill_number}
-            - Account Number: {payment.account_number}
+        if payment.payment_type in ['paybill', 'stk_push']:
+            message += f"""
+                - Paybill Number: {payment.paybill_number}
+                - Account Number: {payment.account_number}
             """
-            if payment.payment_type == 'paybill':
-                message += f"- Transaction ID: {payment.transaction_id}\n"
-            else:
-                message += f"- Checkout Request ID: {payment.transaction_id}\n"
-                message += "Please check your phone to complete the STK Push payment.\n"
+        if payment.payment_type == 'paybill':
+            message += f"- Transaction ID: {payment.transaction_id}\n"
+        else:
+            message += f"- Checkout Request ID: {payment.transaction_id}\n"
+            message += "Please check your phone to complete the STK Push payment.\n"
             message += "Please verify your payment using the Transaction ID in the verification portal.\n"
-        message += "\nRegards,\nFLIPS Team"
-        email = EmailMessage(
-            subject=subject,
-            body=message,
-            from_email="flipsintelligence@gmail.com",
-            to=[payment.user.email],
-        )
+            message += "\nRegards,\nFLIPS Team"
+            email = EmailMessage(
+                subject=subject,
+                body=message,
+                from_email="flipsintelligence@gmail.com",
+                to=[payment.user.email],
+            )
         email.attach_file(pdf_path)
         email.send()
         logger.info(f"Invoice email sent to {payment.user.email} for payment {payment.unique_reference}")
