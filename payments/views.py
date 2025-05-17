@@ -286,6 +286,14 @@ class VerifyPaymentAPIView(APIView):
         logger.debug(f"Daraja API response for transaction {transaction_id}: {result}")
         return result.get('ResultCode') == '0'
 
+class PaymentMethodListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        payment_methods = PaymentMethod.objects.all()
+        serializer = PaymentMethodSerializer(payment_methods, many=True)
+        return Response(serializer.data)
+    
 class UserSubscriptionStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
