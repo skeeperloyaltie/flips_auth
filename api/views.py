@@ -18,7 +18,7 @@ def get_user_info(request):
 
     # Ensure user is authenticated and log error if not
     if request.user.is_authenticated:
-        return Response({'email': request.user.email, 'username': request.user.username})
+        return Response({'email': request.user.email, 'username': request.user.username, 'phone_number': request.user.phone_number}, status=status.HTTP_200_OK)
     else:
         raise NotAuthenticated('Authentication credentials were not provided or are invalid.')
 
