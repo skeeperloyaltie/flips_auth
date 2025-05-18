@@ -458,3 +458,30 @@ class VerificationPageView(APIView):
         user_payments = UserPayment.objects.filter(user=request.user, is_verified=False)
         serializer = UserPaymentSerializer(user_payments, many=True)
         return Response(serializer.data)
+    
+    
+class CheckUserSubscriptionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        plan_id = request.data.get('plan')
+        user = request.user
+
+        try:
+            plan = SubscriptionPlan.objects.get(id=plan_id)
+        except SubscriptionPlan.DoesNotExist:
+            logger.error(f"Plan does not exist: {plan_id} for user {user.username}")
+            return Response({"error": "Plan does not exist."}, status=status.HTTP_400_BAD_REQUEST)
+
+        active_subscription = UserPayment.objects.filter(
+            user=user,
+            plan=plan,
+            is_verified=True
+        ).exists()
+
+        if active_subscription:
+            logger.info(f"User {user.username} is actively subscribed to plan {plan.name}")
+            return Response({"message": "User is actively subscribed to this plan."}, status=status.HTTP_200_OK)
+        else:
+            logger.info(f"User {user.username} has no active subscription to plan {plan.name}")
+            return Response({"message": "User has not purchased or subscribed to this plan."}, status=status.HTTP_200_OK)
