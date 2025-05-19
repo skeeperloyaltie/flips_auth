@@ -13,6 +13,6 @@ urlpatterns = [
     path('payment-page/', PaymentPageView.as_view(), name='payment-page'),
     path('payment-methods/', PaymentMethodListView.as_view(), name='payment-method-list'),
     path('callback/', mpesa_stk_callback, name='mpesa_stk_callback'),
-    path('timeout/', views.mpesa_stk_timeout, name='mpesa_timeout'),
+    path('timeout/', mpesa_stk_timeout, name='mpesa_timeout'),
 
 ]
