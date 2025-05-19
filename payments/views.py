@@ -127,13 +127,12 @@ class InitiatePaymentAPIView(APIView):
             try:
                 user_profile = user.profile
                 if user_profile.phone_number and user_profile.phone_number != phone_number:
-                    logger.warning(f"Phone number mismatch for user {user.username}: "
-                                 f"Provided {phone_number}, Profile {user_profile.phone_number}")
-                    return Response({
-                        "error": "Provided phone number does not match your profile."
-                    }, status=status.HTTP_400_BAD_REQUEST)
+                    logger.info(f"STK Push using non-profile phone number for user {user.username}: "
+                                f"Provided {phone_number}, Profile {user_profile.phone_number}")
+                else:
+                    logger.info(f"STK Push using profile phone number for user {user.username}: {phone_number}")
             except UserProfile.DoesNotExist:
-                logger.warning(f"No UserProfile for user {user.username}")
+                logger.info(f"No UserProfile for user {user.username}, using phone number: {phone_number}")
 
             if float(amount) != float(plan.price):
                 logger.error(f"Amount mismatch for user {user.username}: {amount} != {plan.price}")
