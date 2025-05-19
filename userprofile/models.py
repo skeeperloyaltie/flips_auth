@@ -37,15 +37,11 @@ class PrivacyPolicyAcceptance(models.Model):
     def __str__(self):
         return f"{self.user.username} - Accepted: {self.accepted} on {self.accepted_date}"
 
-# Signal to create UserProfile automatically when a User is created
+# Single signal to handle UserProfile creation
 @receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
+def manage_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    try:
-        instance.profile.save()
-    except UserProfile.DoesNotExist:
-        UserProfile.objects.create(user=instance)
+        UserProfile.objects.get_or_create(
+            user=instance,
+            defaults={'privacy_policy_accepted': False}
+        )
