@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from rest_framework import serializers
 from userprofile.models import UserProfile
+from subscription.models import SubscriptionPlan
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -15,18 +16,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'phone_number', 'category', 'bio', 'profile_picture',
             'subscription_status', 'subscription_level', 'billing_address',
             'birthday', 'subscription_plan', 'expiry_date',
-            'privacy_policy_accepted', 'privacy_policy_accepted_date'
-        )
-
-import logging
-import re
-from django.contrib.auth.models import User
-from django.db import transaction
-from rest_framework import serializers
-from userprofile.models import UserProfile
-from userprofile.serializers import UserProfileSerializer
-
-logger = logging.getLogger(__name__)
+            'privacy_policy_accepted'
+        )  # Removed 'privacy_policy_accepted_date' as it's not in UserProfile model
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(required=False, partial=True)
@@ -37,6 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True},
             'email': {'required': True},
+            'username': {'required': False},  # Username is derived from email
             'first_name': {'required': False},
             'last_name': {'required': False}
         }
@@ -45,10 +37,10 @@ class UserSerializer(serializers.ModelSerializer):
         if not value:
             logger.warning("Email validation failed: Email is required.")
             raise serializers.ValidationError("Email is required.")
-        if User.objects.filter(email=value).exists():
-            logger.warning("Email validation failed: Email already exists.")
+        if User.objects.filter(email__iexact=value).exists():
+            logger.warning(f"Email validation failed: Email {value} already exists.")
             raise serializers.ValidationError("Email already exists.")
-        return value
+        return value.lower()  # Normalize email to lowercase
 
     def validate_password(self, value):
         logger.debug(f"Validating password: {value}")
@@ -70,12 +62,37 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        logger.debug(f"Creating user with data: {validated_data}")
+        logger.debug(f"Creating user with validated data: {validated_data}")
         profile_data = validated_data.pop('profile', {})
+        
         with transaction.atomic():
-            user = User.objects.create_user(**validated_data)
-            UserProfile.objects.create(user=user, **profile_data)
-            logger.info(f"User {user.username} created successfully with profile.")
+            # Derive username from email if not provided
+            username = validated_data.get('username', validated_data['email'].split('@')[0])
+            # Create User
+            user = User(
+                username=username,
+                email=validated_data.get('email'),
+                first_name=validated_data.get('first_name', ''),
+                last_name=validated_data.get('last_name', ''),
+            )
+            user.set_password(validated_data['password'])
+            user.is_active = False  # Set is_active=False as per CreateUserView
+            user.save()  # Triggers post_save signal to create UserProfile
+
+            # Update UserProfile created by the signal
+            try:
+                profile = user.profile
+                # Update fields from profile_data if provided
+                for field, value in profile_data.items():
+                    if value is not None:  # Only update non-None values
+                        setattr(profile, field, value)
+                profile.privacy_policy_accepted = False  # Ensure default as per CreateUserView
+                profile.save()
+                logger.info(f"User {user.username} created successfully with updated profile.")
+            except UserProfile.DoesNotExist:
+                logger.error(f"UserProfile not found for user {user.username} after creation")
+                raise serializers.ValidationError("Failed to create or update user profile.")
+
         return user
 
     def to_representation(self, instance):
