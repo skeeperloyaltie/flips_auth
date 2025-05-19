@@ -485,3 +485,108 @@ class CheckUserSubscriptionView(APIView):
         else:
             logger.info(f"User {user.username} has no active subscription to plan {plan.name}")
             return Response({"message": "User has not purchased or subscribed to this plan."}, status=status.HTTP_200_OK)
+        
+        
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from django.utils import timezone
+from django.core.mail import send_mail
+import json
+import logging
+from .models import UserPayment
+
+logger = logging.getLogger(__name__)
+
+@csrf_exempt
+def mpesa_stk_callback(request):
+    if request.method == 'POST':
+        callback_data = json.loads(request.body.decode('utf-8'))
+
+        body = callback_data.get('Body', {})
+        stk_callback = body.get('stkCallback', {})
+        checkout_request_id = stk_callback.get('CheckoutRequestID')
+
+        result_code = stk_callback.get('ResultCode')
+        result_desc = stk_callback.get('ResultDesc')
+
+        metadata = stk_callback.get('CallbackMetadata', {}).get('Item', [])
+        mpesa_data = {item['Name']: item.get('Value') for item in metadata if 'Value' in item}
+
+        try:
+            payment = UserPayment.objects.get(transaction_id=checkout_request_id)
+
+            if result_code == 0:
+                payment.status = 'verified'
+                payment.is_verified = True
+                payment.verified_at = timezone.now()
+                payment.amount = mpesa_data.get('Amount', payment.amount)
+                payment.transaction_id = mpesa_data.get('MpesaReceiptNumber', checkout_request_id)
+                
+                subject = "Payment Successful"
+                message = f"Dear {payment.user.first_name},\n\nYour payment of KES {payment.amount} was successfully received.\nTransaction ID: {payment.transaction_id}."
+            else:
+                payment.status = 'failed'
+                
+                subject = "Payment Failed"
+                message = f"Dear {payment.user.first_name},\n\nYour payment attempt failed.\nReason: {result_desc}\nPlease try again."
+
+            payment.save()
+
+            # Send email
+            if hasattr(payment, 'user') and payment.user.email:
+                send_mail(
+                    subject,
+                    message,
+                    'info.flipsinteligence@gmail.com',  # Replace with your sender email
+                    [payment.user.email],
+                    fail_silently=False
+                )
+
+        except UserPayment.DoesNotExist:
+            logger.error(f"CheckoutRequestID {checkout_request_id} not found.")
+
+        return JsonResponse({"ResultCode": 0, "ResultDesc": "Received successfully"})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+import logging
+from .models import UserPayment
+
+logger = logging.getLogger(__name__)
+
+@csrf_exempt
+def mpesa_timeout_callback(request):
+    if request.method == 'POST':
+        timeout_data = json.loads(request.body.decode('utf-8'))
+
+        logger.warning("M-Pesa timeout callback received: %s", timeout_data)
+
+        # Get the CheckoutRequestID to identify the payment
+        checkout_request_id = timeout_data.get('CheckoutRequestID')
+
+        try:
+            payment = UserPayment.objects.get(transaction_id=checkout_request_id)
+            payment.status = 'timeout'
+            payment.save()
+
+            # Optionally notify the user via email
+            if hasattr(payment, 'user') and payment.user.email:
+                send_mail(
+                    subject="Payment Timeout",
+                    message=f"Dear {payment.user.first_name},\n\nYour M-Pesa payment attempt timed out. Please try again.",
+                    from_email='no-reply@yourdomain.com',
+                    recipient_list=[payment.user.email],
+                    fail_silently=False
+                )
+
+        except UserPayment.DoesNotExist:
+            logger.error(f"Timeout: CheckoutRequestID {checkout_request_id} not found.")
+
+        return JsonResponse({"ResultCode": 0, "ResultDesc": "Timeout received successfully"})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
+
