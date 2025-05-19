@@ -1,4 +1,5 @@
 import uuid
+import base64  # Added to fix NameError
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
