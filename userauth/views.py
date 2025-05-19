@@ -35,10 +35,7 @@ class CreateUserView(generics.CreateAPIView):
             logger.debug(f"Validated data for user creation: {validated_data}")
 
             user = serializer.save(is_active=False)
-            UserProfile.objects.get_or_create(
-                user=user,
-                defaults={'privacy_policy_accepted': False}  # Explicitly set
-            )
+            # Removed get_or_create; signal in models.py handles UserProfile creation
             logger.info(f"User {user.username} created successfully.")
 
             token = str(uuid.uuid4())
@@ -83,26 +80,6 @@ class VerifyEmailView(views.APIView):
         except VerificationToken.DoesNotExist:
             logger.warning(f'Invalid verification token: {token}')
             return Response({'status': 'Invalid token'}, status=status.HTTP_400_BAD_REQUEST)
-        
-    
-
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
-from rest_framework import views, permissions, status
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-import logging
-
-logger = logging.getLogger(__name__)
-
-from django.contrib.auth import authenticate
-from django.contrib.auth.models import User
-from rest_framework import views, permissions, status
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-import logging
-
-logger = logging.getLogger(__name__)
 
 class LoginView(views.APIView):
     permission_classes = [permissions.AllowAny]
@@ -134,7 +111,7 @@ class LoginView(views.APIView):
             return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Allow login regardless of is_active, but indicate verification status
-        token, created = Token.objects.get_or_create(user=authenticated_user)
+        token, created = Token.objects.get_or_create(user=user)
         needs_privacy_policy = not user.profile.privacy_policy_accepted
         is_verified = user.is_active  # True if verified, False if not
         logger.info(f'User {email} logged in successfully. Verified: {is_verified}, Needs privacy policy: {needs_privacy_policy}')
@@ -142,8 +119,9 @@ class LoginView(views.APIView):
         return Response({
             'token': token.key,
             'needs_privacy_policy': needs_privacy_policy,
-            'is_verified': is_verified  # New field to inform frontend of verification status
+            'is_verified': is_verified
         }, status=status.HTTP_200_OK)
+
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -169,13 +147,13 @@ class GoogleLoginView(views.APIView):
             )
 
             if created:
-                UserProfile.objects.create(user=user)
+                # Signal in models.py will create UserProfile
                 logger.info(f'New user created with Google sign-in: {email}')
             else:
                 logger.info(f'User {email} logged in with Google sign-in.')
 
             token, _ = Token.objects.get_or_create(user=user)
-            needs_privacy_policy = not PrivacyPolicyAcceptance.objects.filter(user=user, accepted=True).exists()
+            needs_privacy_policy = not user.profile.privacy_policy_accepted
             logger.info(f'Google login for {email}. Needs privacy policy: {needs_privacy_policy}')
             return Response({
                 'token': token.key,
@@ -195,14 +173,6 @@ def logout(request):
     except (AttributeError, Token.DoesNotExist):
         logger.warning(f'Logout attempt failed for user: {request.user.username}')
         return Response(status=status.HTTP_400_BAD_REQUEST)
-    
-
-from rest_framework import status, permissions, views
-from django.core.mail import send_mail
-from django.conf import settings
-from django.urls import reverse
-import uuid
-from .models import VerificationToken
 
 class ResendVerificationEmailView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -237,5 +207,3 @@ class ResendVerificationEmailView(views.APIView):
         except Exception as e:
             logger.error(f"Failed to send verification email to {user.email}: {str(e)}")
             return Response({'error': 'Failed to send verification email.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        
