@@ -559,7 +559,7 @@ from .models import UserPayment
 logger = logging.getLogger(__name__)
 
 @csrf_exempt
-def mpesa_timeout_callback(request):
+def mpesa_stk_timeout(request):
     if request.method == 'POST':
         timeout_data = json.loads(request.body.decode('utf-8'))
 
