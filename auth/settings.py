@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "modelbuilder",
     "insurance",
     'whitenoise.runserver_nostatic',  # Add WhiteNoise
+    "sms",
 
 ]
 
