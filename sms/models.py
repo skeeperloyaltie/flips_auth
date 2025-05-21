@@ -17,8 +17,8 @@ class SMSLog(models.Model):
         ('promotional', 'Promotional'),
         ('login_code', 'Login Code'),
     )
-    subscriber = models.ForeignKey('newsletters.Subscriber', on_delete=models.CASCADE, null=True, blank=True)
-    promotional_message = models.ForeignKey('newsletters.PromotionalMessage', on_delete=models.CASCADE, null=True, blank=True)
+    subscriber = models.ForeignKey('newsletter.Subscriber', on_delete=models.CASCADE, null=True, blank=True)
+    promotional_message = models.ForeignKey('newsletter.PromotionalMessage', on_delete=models.CASCADE, null=True, blank=True)
     message_type = models.CharField(max_length=20, choices=MESSAGE_TYPE_CHOICES)
     phone_number = models.CharField(max_length=13)
     status = models.CharField(max_length=50)  # e.g., 'sent', 'failed'
