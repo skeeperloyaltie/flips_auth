@@ -31,7 +31,7 @@ class LoginCodeView(generics.CreateAPIView):
         # Send the login code via SMS
         sms_sent = send_login_code(phone_number, login_code.code)
         if not sms_sent:
-            return Response({"error": "Failed to send login code"}, status=status.HTTP_500_INTERNAL	server_ERROR)
+            return Response({"error": "Failed to send login code"}, status=status.HTTP_500_INTERNAL_server_ERROR)
 
         serializer = self.get_serializer(login_code)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
