@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.utils import timezone
 from .models import Subscriber, PromotionalMessage
 from .serializers import SubscriberSerializer, PromotionalMessageSerializer
+from sms.utils import send_promotional_sms  # Import SMS utility
 
 class SubscribeView(generics.CreateAPIView):
     queryset = Subscriber.objects.all()
@@ -29,13 +30,53 @@ class PromotionalMessageView(generics.ListCreateAPIView):
 
     def send_promotion(self, promo_message):
         subscribers = Subscriber.objects.all()
+        email_success = True
+        sms_success = True
+
+        # Send email to subscribers
         for subscriber in subscribers:
-            send_mail(
-                promo_message.subject,
-                promo_message.message,
-                'your_email@example.com',  # from email
-                [subscriber.email],
-                fail_silently=False,
-            )
+            try:
+                send_mail(
+                    subject=promo_message.subject,
+                    message=promo_message.message,
+                    from_email='your_email@example.com',
+                    recipient_list=[subscriber.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Failed to send email to {subscriber.email}: {str(e)}")
+                email_success = False
+
+        # Send SMS to subscribers with phone numbers
+        for subscriber in subscribers:
+            if subscriber.phone_number:
+                try:
+                    sms_sent = send_promotional_sms(
+                        phone_number=subscriber.phone_number,
+                        message=promo_message.message[:160],  # SMS character limit
+                        promotional_message=promo_message,
+                        subscriber=subscriber
+                    )
+                    if not sms_sent:
+                        # Fallback to email if SMS fails
+                        try:
+                            send_mail(
+                                subject=promo_message.subject,
+                                message=f"SMS failed. Here's your message: {promo_message.message}",
+                                from_email='your_email@example.com',
+                                recipient_list=[subscriber.email],
+                                fail_silently=False,
+                            )
+                        except Exception as e:
+                            print(f"Fallback email failed for {subscriber.email}: {str(e)}")
+                            email_success = False
+                        sms_success = False
+                except Exception as e:
+                    print(f"Failed to send SMS to {subscriber.phone_number}: {str(e)}")
+                    sms_success = False
+
+        # Update promotional message status
         promo_message.sent_at = timezone.now()
+        promo_message.email_sent = email_success
+        promo_message.sms_sent = sms_success
         promo_message.save()

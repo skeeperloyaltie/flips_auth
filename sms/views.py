@@ -1,33 +1,59 @@
-# sms/views.py
-from django.http import JsonResponse
-# from africastalking_config import sms
+from rest_framework import generics, status
+from rest_framework.response import Response
+from rest_framework.permissions import IsAdminUser, AllowAny
+from .models import SMSConfig, SMSLog, LoginCode
+from .serializers import SMSConfigSerializer, SMSLogSerializer, LoginCodeSerializer
+from .utils import send_login_code
 
+class SMSConfigView(generics.ListCreateAPIView):
+    queryset = SMSConfig.objects.all()
+    serializer_class = SMSConfigSerializer
+    permission_classes = [IsAdminUser]
 
-import africastalking
+class SMSLogView(generics.ListAPIView):
+    queryset = SMSLog.objects.all()
+    serializer_class = SMSLogSerializer
+    permission_classes = [IsAdminUser]
 
-# Set your app credentials
-username = "flipsadmin"    # Your Africa's Talking username
-api_key = "831746d735117ec7a84b3fc64e6c47e39c7e417ffddd2c20f439ca77c93a4a20"      # Your Africa's Talking API key
+class LoginCodeView(generics.CreateAPIView):
+    serializer_class = LoginCodeSerializer
+    permission_classes = [AllowAny]
 
-# Initialize the SDK
-africastalking.initialize(username, api_key)
+    def create(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+        if not phone_number:
+            return Response({"error": "Phone number is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-# Get the SMS service
-sms = africastalking.SMS
+        # Create a new login code
+        login_code = LoginCode(phone_number=phone_number)
+        login_code.save()
 
-def send_sms(request):
-    if request.method == 'POST':
-        phone_number = request.POST.get('phone_number')
-        message = request.POST.get('message')
+        # Send the login code via SMS
+        sms_sent = send_login_code(phone_number, login_code.code)
+        if not sms_sent:
+            return Response({"error": "Failed to send login code"}, status=status.HTTP_500_INTERNAL	server_ERROR)
 
-        if not phone_number or not message:
-            return JsonResponse({'error': 'Phone number and message are required'}, status=400)
+        serializer = self.get_serializer(login_code)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class VerifyLoginCodeView(generics.GenericAPIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        phone_number = request.data.get('phone_number')
+        code = request.data.get('code')
+
+        if not phone_number or not code:
+            return Response({"error": "Phone number and code are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # Use the SMS service to send the message
-            response = sms.send(message, [phone_number])
-            return JsonResponse({'success': response}, status=200)
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            login_code = LoginCode.objects.get(phone_number=phone_number, code=code)
+            if not login_code.is_valid():
+                return Response({"error": "Invalid or expired code"}, status=status.HTTP_400_BAD_REQUEST)
 
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+            login_code.is_used = True
+            login_code.save()
+            return Response({"message": "Login code verified successfully"}, status=status.HTTP_200_OK)
+
+        except LoginCode.DoesNotExist:
+            return Response({"error": "Invalid code"}, status=status.HTTP_400_BAD_REQUEST)
