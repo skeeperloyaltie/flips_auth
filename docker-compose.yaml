@@ -11,8 +11,9 @@ services:
       - '8000'
 
     command: >
-      sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance &&
+      sh -c "python manage.py makemigrations userauth subscription api api_monitor payments monitoring prediction apistatus contact newsletter monitor neural userprofile activity rigsdata reports settings gis modelbuilder config insurance sms &&
              python manage.py migrate &&
+             python manage.py migrate sms &&
              python manage.py collectstatic --noinput &&
              python manage.py add_rigs &&
              python manage.py makemigrations subscription &&
