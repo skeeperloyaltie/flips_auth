@@ -14,7 +14,16 @@ class UserPayment(models.Model):
     PAYMENT_TYPES = (
         ('card', 'Card'),
         ('paybill', 'M-Pesa Paybill'),
+        ('stk_push', 'M-Pesa STK Push'),  # Added to support STK Push
+        ('free', 'Free'),  # Added to support free subscriptions
     )
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('verified', 'Verified'),
+        ('failed', 'Failed'),
+        ('timeout', 'Timeout'),
+    )
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     payment_method = models.ForeignKey(PaymentMethod, on_delete=models.CASCADE, null=True, blank=True)
     plan = models.ForeignKey(SubscriptionPlan, on_delete=models.CASCADE)
@@ -24,7 +33,7 @@ class UserPayment(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     paybill_number = models.CharField(max_length=100, blank=True, null=True)
     account_number = models.CharField(max_length=100, blank=True, null=True)
-    status = models.CharField(max_length=50, default="pending")
+    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='pending')
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     verified_at = models.DateTimeField(null=True, blank=True)

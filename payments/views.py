@@ -221,52 +221,158 @@ class InitiatePaymentAPIView(APIView):
         logger.error(f"Invalid payment type for user {user.username}: {payment_type}")
         return Response({"error": "Invalid payment type."}, status=status.HTTP_400_BAD_REQUEST)
 
-
     def generate_invoice_pdf(self, payment):
-        pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
-        c = canvas.Canvas(pdf_path, pagesize=letter)
-        c.setFont("Helvetica-Bold", 16)
-        c.drawString(50, 750, "Payment Invoice")
-        c.setFont("Helvetica", 12)
-        c.drawString(50, 730, f"Invoice ID: {payment.unique_reference}")
-        c.drawString(50, 710, f"Plan: {payment.plan.name}")
-        c.drawString(50, 690, f"Amount: KES {payment.amount}")
-        c.drawString(50, 670, f"User: {payment.user.username}")
-        c.drawString(50, 650, f"Payment Type: {payment.get_payment_type_display()}")
+        # LaTeX template for the invoice
+        latex_template = r"""
+        \documentclass[a4paper,12pt]{article}
+        \usepackage[utf8]{inputenc}
+        \usepackage{geometry}
+        \usepackage{booktabs}
+        \usepackage{fancyhdr}
+        \usepackage{lastpage}
+        \usepackage{graphicx}
+        \geometry{margin=1in}
+        \pagestyle{fancy}
+        \fancyhf{}
+        \lhead{\textbf{FLIPS Invoice}}
+        \rhead{Page \thepage\ of \pageref{LastPage}}
+        \cfoot{\small FLIPS Intelligence, Nairobi, Kenya}
+        \begin{document}
+        \begin{center}
+            \Huge \textbf{Payment Invoice} \\
+            \vspace{0.5cm}
+            \large Issued on: \today \\
+            \vspace{0.3cm}
+            \includegraphics[width=0.3\textwidth]{logo.png} % Optional logo
+        \end{center}
+        \vspace{0.5cm}
+        \noindent
+        \textbf{To:} \\
+        {user_full_name} \\
+        {user_email} \\
+        \vspace{0.3cm}
+        \textbf{From:} \\
+        FLIPS Intelligence \\
+        Nairobi, Kenya \\
+        Email: flipsintelligence@gmail.com \\
+        Phone: +254 700 168 812 \\
+        \vspace{0.5cm}
+        \begin{tabular}{ll}
+            \toprule
+            \textbf{Field} & \textbf{Details} \\
+            \midrule
+            Invoice ID & {unique_reference} \\
+            Plan & {plan_name} \\
+            Amount & KES {amount} \\
+            Payment Type & {payment_type} \\
+            {extra_fields}
+            \bottomrule
+        \end{tabular}
+        \vspace{0.5cm}
+        \noindent
+        Thank you for your subscription. For any inquiries, contact us at flipsintelligence@gmail.com.
+        \end{document}
+        """
+
+        # Prepare dynamic data
+        user_full_name = payment.user.get_full_name() or payment.user.username
+        user_email = payment.user.email
+        plan_name = payment.plan.name
+        amount = f"{payment.amount:.2f}"
+        payment_type = payment.get_payment_type_display()
+        unique_reference = payment.unique_reference
+
+        # Extra fields based on payment type
+        extra_fields = ""
         if payment.payment_type in ['paybill', 'stk_push']:
-            c.drawString(50, 630, f"Paybill Number: {payment.paybill_number}")
-            c.drawString(50, 610, f"Account Number: {payment.account_number}")
-            if payment.payment_type == 'paybill':
-                c.drawString(50, 590, f"Transaction ID: {payment.transaction_id}")
-            else:
-                c.drawString(50, 590, f"Checkout Request ID: {payment.transaction_id}")
-        c.save()
-        return pdf_path
+            extra_fields += f"Paybill Number & {payment.paybill_number or 'N/A'} \\\\ \n"
+            extra_fields += f"Account Number & {payment.account_number or 'N/A'} \\\\ \n"
+            extra_fields += f"{'Transaction ID' if payment.payment_type == 'paybill' else 'Checkout Request ID'} & {payment.transaction_id or 'N/A'} \\\\ \n"
+        elif payment.payment_type == 'free':
+            extra_fields += f"Transaction ID & {payment.transaction_id or 'N/A'} \\\\ \n"
+
+        # Format the LaTeX template
+        latex_content = latex_template.format(
+            user_full_name=user_full_name,
+            user_email=user_email,
+            unique_reference=unique_reference,
+            plan_name=plan_name,
+            amount=amount,
+            payment_type=payment_type,
+            extra_fields=extra_fields
+        )
+
+        # Create temporary directory for LaTeX compilation
+        with tempfile.TemporaryDirectory() as temp_dir:
+            tex_file_path = os.path.join(temp_dir, "invoice.tex")
+            pdf_file_path = os.path.join(temp_dir, "invoice.pdf")
+
+            # Write LaTeX content to file
+            with open(tex_file_path, 'w', encoding='utf-8') as tex_file:
+                tex_file.write(latex_content)
+
+            # Copy logo to temp directory (if used)
+            logo_path = os.path.join(settings.BASE_DIR, 'assets', 'img', 'logo.png')
+            if os.path.exists(logo_path):
+                shutil.copy(logo_path, os.path.join(temp_dir, 'logo.png'))
+
+            # Compile LaTeX to PDF
+            try:
+                result = subprocess.run(
+                    ['pdflatex', '-output-directory', temp_dir, tex_file_path],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=30
+                )
+                if result.returncode != 0:
+                    logger.error(f"LaTeX compilation failed: {result.stderr}")
+                    raise Exception(f"LaTeX compilation failed: {result.stderr}")
+            except subprocess.TimeoutExpired:
+                logger.error("LaTeX compilation timed out")
+                raise Exception("LaTeX compilation timed out")
+            except FileNotFoundError:
+                logger.error("pdflatex not found. Ensure LaTeX is installed.")
+                raise Exception("pdflatex not found. Please install a LaTeX distribution.")
+
+            # Check if PDF was generated
+            if not os.path.exists(pdf_file_path):
+                logger.error("PDF file not generated")
+                raise Exception("Failed to generate PDF file")
+
+            # Move PDF to a persistent temporary file
+            final_pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
+            shutil.move(pdf_file_path, final_pdf_path)
+
+        return final_pdf_path
 
     def send_invoice_email(self, payment, pdf_path):
         subject = "FLIPS Payment Invoice"
         message = f"""
             Dear {payment.user.get_full_name() or payment.user.username},
 
-            Thank you for initiating your payment for the {payment.plan.name} plan. Please find your invoice attached.
+            Thank you for subscribing to the {payment.plan.name} plan. Please find your invoice attached.
 
             Payment Details:
             - Plan: {payment.plan.name}
             - Amount: KES {payment.amount}
             - Invoice ID: {payment.unique_reference}
             - Payment Type: {payment.get_payment_type_display()}
-            """
+        """
         if payment.payment_type in ['paybill', 'stk_push']:
             message += f"""
-                - Paybill Number: {payment.paybill_number}
-                - Account Number: {payment.account_number}
+                - Paybill Number: {payment.paybill_number or 'N/A'}
+                - Account Number: {payment.account_number or 'N/A'}
             """
-        if payment.payment_type == 'paybill':
+            if payment.payment_type == 'paybill':
+                message += f"- Transaction ID: {payment.transaction_id}\n"
+            else:
+                message += f"- Checkout Request ID: {payment.transaction_id}\n"
+                message += "Please check your phone to complete the STK Push payment.\n"
+                message += "Please verify your payment using the Transaction ID in the verification portal.\n"
+        elif payment.payment_type == 'free':
             message += f"- Transaction ID: {payment.transaction_id}\n"
-        else:
-            message += f"- Checkout Request ID: {payment.transaction_id}\n"
-            message += "Please check your phone to complete the STK Push payment.\n"
-            message += "Please verify your payment using the Transaction ID in the verification portal.\n"
+            message += "Your free subscription is active for 14 days.\n"
             message += "\nRegards,\nFLIPS Team"
             email = EmailMessage(
                 subject=subject,
@@ -275,9 +381,14 @@ class InitiatePaymentAPIView(APIView):
                 to=[payment.user.email],
             )
         email.attach_file(pdf_path)
-        email.send()
-        logger.info(f"Invoice email sent to {payment.user.email} for payment {payment.unique_reference}")
-
+        try:
+            email.send()
+            logger.info(f"Invoice email sent to {payment.user.email} for payment {payment.unique_reference}")
+        except Exception as e:
+            logger.error(f"Failed to send invoice email to {payment.user.email}: {str(e)}")
+            raise
+        return pdf_path
+    
 class VerifyPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -531,7 +642,24 @@ def mpesa_stk_callback(request):
                 payment.verified_at = timezone.now()
                 payment.amount = mpesa_data.get('Amount', payment.amount)
                 payment.transaction_id = mpesa_data.get('MpesaReceiptNumber', checkout_request_id)
-                
+                payment.save()
+
+                subscription, created = UserSubscription.objects.get_or_create(
+                    user=payment.user,
+                    plan=payment.plan,
+                    defaults={
+                        'active': True,
+                        'start_date': timezone.now(),
+                        'end_date': timezone.now() + timezone.timedelta(days=30)
+                    }
+                )
+                if not created:
+                    subscription.active = True
+                    subscription.start_date = timezone.now()
+                    subscription.end_date = timezone.now() + timezone.timedelta(days=30)
+                    subscription.save()
+
+                logger.info(f"STK callback created/updated subscription for user {payment.user.username} with plan {payment.plan.name}")
                 subject = "Payment Successful"
                 message = f"Dear {payment.user.first_name},\n\nYour payment of KES {payment.amount} was successfully received.\nTransaction ID: {payment.transaction_id}."
             else:

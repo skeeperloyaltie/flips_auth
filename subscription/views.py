@@ -39,6 +39,13 @@ def check_user_subscription(request):
         'message': 'No active subscription found.'
     }, status=status.HTTP_200_OK)
 
+from decimal import Decimal
+import logging
+import tempfile
+import os
+
+logger = logging.getLogger(__name__)
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def subscribe(request):
@@ -66,23 +73,52 @@ def subscribe(request):
         subscription = UserSubscription.objects.create(
             user=user,
             plan=plan,
-            active=True,  # Activate immediately for free plans
+            active=True,
             start_date=timezone.now(),
-            end_date=timezone.now() + timezone.timedelta(days=14)  # 14 days for free plans
+            end_date=timezone.now() + timezone.timedelta(days=14)
         )
+
+        # Create payment record for free plan
+        unique_reference = str(uuid.uuid4())
+        transaction_id = f"FREE-{unique_reference[:10].upper()}"  # Generate a unique transaction ID
+        payment = UserPayment.objects.create(
+            user=user,
+            plan=plan,
+            payment_type='free',
+            unique_reference=unique_reference,
+            transaction_id=transaction_id,
+            amount=0.0,
+            status='verified',
+            is_verified=True,
+            verified_at=timezone.now(),
+            paybill_number='',
+            account_number='',
+        )
+        logger.info(f"Free payment record created for user {user.username}, plan {plan.name}, unique_reference={unique_reference}, transaction_id={transaction_id}")
+
+        # Generate and send invoice
+        payment_view = InitiatePaymentAPIView()
+        pdf_path = payment_view.generate_invoice_pdf(payment)
+        payment_view.send_invoice_email(payment, pdf_path)
+        os.unlink(pdf_path)
+        logger.info(f"Invoice sent for free subscription for user {user.username}, plan {plan.name}")
+
         logger.info(f"Free subscription created for user {user.username} with plan {plan.name}, active={subscription.active}, start_date={subscription.start_date}, end_date={subscription.end_date}")
         return Response({
             'message': 'Successfully subscribed to the free plan for 14 days.',
             'plan_id': plan_id,
-            'subscription_id': subscription.id
+            'subscription_id': subscription.id,
+            'payment_reference': unique_reference
         }, status=status.HTTP_201_CREATED)
     else:
-        # For paid plans, do not create subscription yet; initiate payment
+        # For paid plans, do not create subscription or payment yet
         logger.info(f"Paid plan selected for user {user.username}, plan {plan.name}. Awaiting payment initiation.")
         return Response({
             'message': 'Please complete payment to activate subscription.',
             'plan_id': plan_id
         }, status=status.HTTP_202_ACCEPTED)
+
+# ... (rest of the file unchanged)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
