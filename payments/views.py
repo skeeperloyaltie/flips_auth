@@ -1,26 +1,4 @@
 import uuid
-import base64  # Added to fix NameError
-from django.utils import timezone
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from .models import PaymentMethod, UserPayment
-from subscription.models import SubscriptionPlan, UserSubscription
-from userprofile.models import UserProfile
-from .serializers import PaymentMethodSerializer, UserPaymentSerializer
-from django.core.mail import EmailMessage
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-import tempfile
-import os
-import logging
-import stripe
-import requests
-from django.conf import settings
-from retrying import retry
-
-import uuid
 import base64
 from django.utils import timezone
 from rest_framework import status
@@ -31,12 +9,16 @@ from .models import PaymentMethod, UserPayment
 from subscription.models import SubscriptionPlan, UserSubscription
 from userprofile.models import UserProfile
 from .serializers import PaymentMethodSerializer, UserPaymentSerializer
-from .utils import generate_invoice_pdf, send_invoice_email  # Import utility functions
+from .utils import generate_invoice_pdf, send_invoice_email
 import logging
 import stripe
 import requests
 from django.conf import settings
 from retrying import retry
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+from django.core.mail import send_mail
 import re
 import os
 
@@ -235,7 +217,6 @@ class InitiatePaymentAPIView(APIView):
         logger.error(f"Invalid payment type for user {user.username}: {payment_type}")
         return Response({"error": "Invalid payment type."}, status=status.HTTP_400_BAD_REQUEST)
 
-    
 class VerifyPaymentAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -271,19 +252,18 @@ class VerifyPaymentAPIView(APIView):
                         defaults={
                             'active': True,
                             'start_date': timezone.now(),
-                            'end_date': timezone.now() + timezone.timedelta(days=30)
+                            'end_date': timezone.now() + timezone.timedelta(days=payment.plan.duration)
                         }
                     )
                     if not created:
                         subscription.active = True
                         subscription.start_date = timezone.now()
-                        subscription.end_date = timezone.now() + timezone.timedelta(days=30)
+                        subscription.end_date = timezone.now() + timezone.timedelta(days=payment.plan.duration)
                         subscription.save()
 
                     user_profile, _ = UserProfile.objects.get_or_create(user=user)
                     user_profile.subscription_status = True
                     user_profile.subscription_plan = payment.plan
-                    user_profile.subscription_level = payment.plan.name
                     user_profile.expiry_date = subscription.end_date
                     user_profile.save()
 
@@ -317,19 +297,18 @@ class VerifyPaymentAPIView(APIView):
                     defaults={
                         'active': True,
                         'start_date': timezone.now(),
-                        'end_date': timezone.now() + timezone.timedelta(days=30)
+                        'end_date': timezone.now() + timezone.timedelta(days=payment.plan.duration)
                     }
                 )
                 if not created:
                     subscription.active = True
                     subscription.start_date = timezone.now()
-                    subscription.end_date = timezone.now() + timezone.timedelta(days=30)
+                    subscription.end_date = timezone.now() + timezone.timedelta(days=payment.plan.duration)
                     subscription.save()
 
                 user_profile, _ = UserProfile.objects.get_or_create(user=user)
                 user_profile.subscription_status = True
                 user_profile.subscription_plan = payment.plan
-                user_profile.subscription_level = payment.plan.name
                 user_profile.expiry_date = subscription.end_date
                 user_profile.save()
 
@@ -383,7 +362,7 @@ class PaymentMethodListView(APIView):
         payment_methods = PaymentMethod.objects.all()
         serializer = PaymentMethodSerializer(payment_methods, many=True)
         return Response(serializer.data)
-    
+
 class UserSubscriptionStatusView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -426,8 +405,7 @@ class VerificationPageView(APIView):
         user_payments = UserPayment.objects.filter(user=request.user, is_verified=False)
         serializer = UserPaymentSerializer(user_payments, many=True)
         return Response(serializer.data)
-    
-    
+
 class CheckUserSubscriptionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -453,17 +431,6 @@ class CheckUserSubscriptionView(APIView):
         else:
             logger.info(f"User {user.username} has no active subscription to plan {plan.name}")
             return Response({"message": "User has not purchased or subscribed to this plan."}, status=status.HTTP_200_OK)
-        
-        
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.utils import timezone
-from django.core.mail import send_mail
-import json
-import logging
-from .models import UserPayment
-
-logger = logging.getLogger(__name__)
 
 @csrf_exempt
 def mpesa_stk_callback(request):
@@ -497,21 +464,26 @@ def mpesa_stk_callback(request):
                     defaults={
                         'active': True,
                         'start_date': timezone.now(),
-                        'end_date': timezone.now() + timezone.timedelta(days=30)
+                        'end_date': timezone.now() + timezone.timedelta(days=payment.plan.duration)
                     }
                 )
                 if not created:
                     subscription.active = True
                     subscription.start_date = timezone.now()
-                    subscription.end_date = timezone.now() + timezone.timedelta(days=30)
+                    subscription.end_date = timezone.now() + timezone.timedelta(days=payment.plan.duration)
                     subscription.save()
 
-                logger.info(f"STK callback created/updated subscription for user {payment.user.username} with plan {payment.plan.name}")
+                user_profile, _ = UserProfile.objects.get_or_create(user=payment.user)
+                user_profile.subscription_status = True
+                user_profile.subscription_plan = payment.plan
+                user_profile.expiry_date = subscription.end_date
+                user_profile.save()
+
+                logger.info(f"STK callback verified payment and updated subscription for user {payment.user.username} with plan {payment.plan.name}")
                 subject = "Payment Successful"
                 message = f"Dear {payment.user.first_name},\n\nYour payment of KES {payment.amount} was successfully received.\nTransaction ID: {payment.transaction_id}."
             else:
                 payment.status = 'failed'
-                
                 subject = "Payment Failed"
                 message = f"Dear {payment.user.first_name},\n\nYour payment attempt failed.\nReason: {result_desc}\nPlease try again."
 
@@ -534,15 +506,6 @@ def mpesa_stk_callback(request):
 
     return JsonResponse({"error": "Invalid request"}, status=400)
 
-
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-import json
-import logging
-from .models import UserPayment
-
-logger = logging.getLogger(__name__)
-
 @csrf_exempt
 def mpesa_stk_timeout(request):
     if request.method == 'POST':
@@ -563,7 +526,7 @@ def mpesa_stk_timeout(request):
                 send_mail(
                     subject="Payment Timeout",
                     message=f"Dear {payment.user.first_name},\n\nYour M-Pesa payment attempt timed out. Please try again.",
-                    from_email='no-reply@yourdomain.com',
+                    from_email='info.flipsinteligence@gmail.com',
                     recipient_list=[payment.user.email],
                     fail_silently=False
                 )
@@ -574,4 +537,3 @@ def mpesa_stk_timeout(request):
         return JsonResponse({"ResultCode": 0, "ResultDesc": "Timeout received successfully"})
 
     return JsonResponse({"error": "Invalid request"}, status=400)
-
