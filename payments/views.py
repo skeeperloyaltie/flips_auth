@@ -310,11 +310,16 @@ class VerifyPaymentAPIView(APIView):
                     subscription, created = UserSubscription.objects.get_or_create(
                         user=user,
                         plan=payment.plan,
-                        defaults={'active': True, 'start_date': timezone.now()}
+                        defaults={
+                            'active': True,
+                            'start_date': timezone.now(),
+                            'end_date': timezone.now() + timezone.timedelta(days=30)
+                        }
                     )
                     if not created:
                         subscription.active = True
                         subscription.start_date = timezone.now()
+                        subscription.end_date = timezone.now() + timezone.timedelta(days=30)
                         subscription.save()
 
                     user_profile, _ = UserProfile.objects.get_or_create(user=user)
@@ -351,11 +356,16 @@ class VerifyPaymentAPIView(APIView):
                 subscription, created = UserSubscription.objects.get_or_create(
                     user=user,
                     plan=payment.plan,
-                    defaults={'active': True, 'start_date': timezone.now()}
+                    defaults={
+                        'active': True,
+                        'start_date': timezone.now(),
+                        'end_date': timezone.now() + timezone.timedelta(days=30)
+                    }
                 )
                 if not created:
                     subscription.active = True
                     subscription.start_date = timezone.now()
+                    subscription.end_date = timezone.now() + timezone.timedelta(days=30)
                     subscription.save()
 
                 user_profile, _ = UserProfile.objects.get_or_create(user=user)

@@ -46,6 +46,9 @@ def subscribe(request):
     user = request.user
     plan = get_object_or_404(SubscriptionPlan, id=plan_id)
 
+    logger.info(f"Processing subscription for user {user.username}, plan_id={plan_id}, plan_name={plan.name}, plan_price={plan.price}, price_type={type(plan.price)}")
+
+    # Check for existing active subscription
     current_subscription = UserSubscription.objects.filter(user=user, active=True).first()
     if current_subscription and current_subscription.is_active():
         if current_subscription.plan.id == plan_id:
@@ -56,29 +59,29 @@ def subscribe(request):
         current_subscription.save()
 
     # Check if the plan is free
-    is_free_plan = plan.price == 0
-
-    # Create subscription
-    subscription = UserSubscription.objects.create(
-        user=user,
-        plan=plan,
-        active=is_free_plan,  # Activate immediately for free plans
-        start_date=timezone.now(),
-        end_date=timezone.now() + timezone.timedelta(days=14) if is_free_plan else timezone.now() + timezone.timedelta(days=30)  # 14 days for free plans, 30 days for paid
-    )
-    logger.info(f"Subscription created for user {user.username} with plan {plan.name}, active={subscription.active}, end_date={subscription.end_date}")
+    is_free_plan = plan.price == 0 or plan.price == Decimal('0.00')
 
     if is_free_plan:
+        # Create subscription for free plan
+        subscription = UserSubscription.objects.create(
+            user=user,
+            plan=plan,
+            active=True,  # Activate immediately for free plans
+            start_date=timezone.now(),
+            end_date=timezone.now() + timezone.timedelta(days=14)  # 14 days for free plans
+        )
+        logger.info(f"Free subscription created for user {user.username} with plan {plan.name}, active={subscription.active}, start_date={subscription.start_date}, end_date={subscription.end_date}")
         return Response({
             'message': 'Successfully subscribed to the free plan for 14 days.',
             'plan_id': plan_id,
             'subscription_id': subscription.id
         }, status=status.HTTP_201_CREATED)
     else:
+        # For paid plans, do not create subscription yet; initiate payment
+        logger.info(f"Paid plan selected for user {user.username}, plan {plan.name}. Awaiting payment initiation.")
         return Response({
             'message': 'Please complete payment to activate subscription.',
-            'plan_id': plan_id,
-            'subscription_id': subscription.id
+            'plan_id': plan_id
         }, status=status.HTTP_202_ACCEPTED)
 
 @api_view(['GET'])
