@@ -48,6 +48,22 @@ import os
 
 logger = logging.getLogger(__name__)
 
+from decimal import Decimal
+import logging
+import uuid
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import SubscriptionPlan, UserSubscription
+from payments.models import UserPayment
+from payments.utils import generate_invoice_pdf, send_invoice_email  # Import utility functions
+from rest_framework.permissions import IsAuthenticated
+import os
+
+logger = logging.getLogger(__name__)
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def subscribe(request):
@@ -99,11 +115,16 @@ def subscribe(request):
         logger.info(f"Free payment record created for user {user.username}, plan {plan.name}, unique_reference={unique_reference}, transaction_id={transaction_id}")
 
         # Generate and send invoice
-        payment_view = InitiatePaymentAPIView()
-        pdf_path = payment_view.generate_invoice_pdf(payment)
-        payment_view.send_invoice_email(payment, pdf_path)
-        os.unlink(pdf_path)
-        logger.info(f"Invoice sent for free subscription for user {user.username}, plan {plan.name}")
+        try:
+            pdf_path = generate_invoice_pdf(payment)
+            send_invoice_email(payment, pdf_path)
+            os.unlink(pdf_path)
+            logger.info(f"Invoice sent for free subscription for user {user.username}, plan {plan.name}")
+        except Exception as e:
+            logger.error(f"Failed to generate or send invoice for user {user.username}: {str(e)}")
+            # Optionally, you can decide whether to fail the subscription or proceed
+            # Here, we proceed but log the error
+            pass
 
         logger.info(f"Free subscription created for user {user.username} with plan {plan.name}, active={subscription.active}, start_date={subscription.start_date}, end_date={subscription.end_date}")
         return Response({
