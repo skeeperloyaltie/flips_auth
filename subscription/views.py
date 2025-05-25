@@ -9,6 +9,8 @@ from payments.models import UserPayment
 from .serializers import SubscriptionPlanSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+import uuid
+
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +120,6 @@ def subscribe(request):
             'plan_id': plan_id
         }, status=status.HTTP_202_ACCEPTED)
 
-# ... (rest of the file unchanged)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
