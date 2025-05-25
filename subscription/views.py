@@ -55,18 +55,31 @@ def subscribe(request):
         current_subscription.active = False
         current_subscription.save()
 
-    # Create a pending subscription
+    # Check if the plan is free
+    is_free_plan = plan.price == 0
+
+    # Create subscription
     subscription = UserSubscription.objects.create(
         user=user,
         plan=plan,
-        active=False  # Activate after payment verification
+        active=is_free_plan,  # Activate immediately for free plans
+        start_date=timezone.now(),
+        end_date=timezone.now() + timezone.timedelta(days=14) if is_free_plan else timezone.now() + timezone.timedelta(days=30)  # 14 days for free plans, 30 days for paid
     )
-    logger.info(f"Pending subscription created for user {user.username} with plan {plan.name}")
-    return Response({
-        'message': 'Please complete payment to activate subscription.',
-        'plan_id': plan_id,
-        'subscription_id': subscription.id
-    }, status=status.HTTP_202_ACCEPTED)
+    logger.info(f"Subscription created for user {user.username} with plan {plan.name}, active={subscription.active}, end_date={subscription.end_date}")
+
+    if is_free_plan:
+        return Response({
+            'message': 'Successfully subscribed to the free plan for 14 days.',
+            'plan_id': plan_id,
+            'subscription_id': subscription.id
+        }, status=status.HTTP_201_CREATED)
+    else:
+        return Response({
+            'message': 'Please complete payment to activate subscription.',
+            'plan_id': plan_id,
+            'subscription_id': subscription.id
+        }, status=status.HTTP_202_ACCEPTED)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
