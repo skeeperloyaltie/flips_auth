@@ -145,7 +145,8 @@ from rest_framework import status
 from django.utils.timezone import now
 from datetime import timedelta
 import logging
-
+from .serializers import WaterLevelDataSerializer
+from subscription.models import UserSubscription, SubscriptionPlan
 # Initialize logger
 logger = logging.getLogger(__name__)
 
@@ -154,26 +155,30 @@ class GraphDataAPIView(APIView):
 
     def get(self, request, *args, **kwargs):
         try:
-            user_profile = request.user.profile
+            user = request.user
             current_time = now()
 
             # Log fetching attempt
-            logger.info(f"Fetching water levels for user: {request.user.username}")
+            logger.info(f"Fetching water levels for user: {user.username}")
 
-            # Retrieve all rigs and map them by sensor_id for easier access
+            # Get active subscription from UserSubscription
+            subscription = UserSubscription.objects.filter(user=user, active=True).first()
+            subscription_plan = subscription.plan if subscription and subscription.is_active() else None
+
+            # Log subscription details
+            logger.info(f"User subscription plan: {subscription_plan.name if subscription_plan else 'None'}")
+
+            # Retrieve all rigs and map them by sensor_id
             rigs = Rig.objects.all()
             rig_map = {rig.sensor_id: rig for rig in rigs}
 
-            logger.info(f"User subscription plan: {user_profile.subscription_plan}")
-
             # Determine time threshold based on subscription plan
-            time_threshold = self.get_time_threshold(user_profile.subscription_plan, request.user.is_staff, current_time)
-            logger.info(f'User subscription: {user_profile.subscription_plan} and this is a staff? {request.user.is_staff}')
+            time_threshold = self.get_time_threshold(subscription_plan, request.user.is_staff, current_time)
             if time_threshold is None:
-                logger.error("Invalid subscription plan.")
-                return Response({'error': 'Invalid subscription plan'}, status=status.HTTP_400_BAD_REQUEST)
+                logger.warning(f"No valid subscription for user: {user.username}. Defaulting to free plan threshold.")
+                time_threshold = current_time - timedelta(minutes=30)  # Default to free plan
 
-            # Filter water level data based on the determined time threshold
+            # Filter water level data based on the time threshold
             filtered_levels = WaterLevelData.objects.filter(timestamp__gte=time_threshold)
 
             # Serialize and format the filtered data
@@ -184,14 +189,14 @@ class GraphDataAPIView(APIView):
             response_data = {'current_data': formatted_data}
 
             # Include prediction data for government users
-            if user_profile.subscription_plan == 'government' and filtered_levels.exists():
+            if subscription_plan and subscription_plan.name.lower() == 'government':
                 prediction_response = self.prepare_prediction_data(filtered_levels, rigs)
                 response_data.update(prediction_response)
 
             return Response(response_data, status=status.HTTP_200_OK)
 
         except Exception as e:
-            logger.error(f"Error in GraphDataAPIView: {str(e)}")
+            logger.error(f"Error in GraphDataAPIView for user {user.username}: {str(e)}")
             return Response({'error': 'An error occurred while processing the request.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def get_time_threshold(self, subscription_plan, is_staff, current_time):
