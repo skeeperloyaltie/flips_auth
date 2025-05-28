@@ -15,8 +15,28 @@ class SubscribeView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         if response.status_code == status.HTTP_201_CREATED:
-            # Additional actions if needed
-            pass
+            subscriber = Subscriber.objects.get(email=request.data['email'])
+            try:
+                send_mail(
+                    subject="Welcome to FLIPS Newsletter!",
+                    message="Thank you for subscribing to FLIPS. Stay tuned for updates on flood prediction and more!",
+                    from_email='your_email@example.com',
+                    recipient_list=[subscriber.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                print(f"Failed to send welcome email to {subscriber.email}: {str(e)}")
+
+            if subscriber.phone_number:
+                try:
+                    send_promotional_sms(
+                        phone_number=subscriber.phone_number,
+                        message="Welcome to FLIPS! Stay tuned for updates.",
+                        promotional_message=None,
+                        subscriber=subscriber
+                    )
+                except Exception as e:
+                    print(f"Failed to send welcome SMS to {subscriber.phone_number}: {str(e)}")
         return response
 
 class PromotionalMessageView(generics.ListCreateAPIView):
