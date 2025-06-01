@@ -15,6 +15,31 @@ class RigAdmin(admin.ModelAdmin):
     list_display = ('sensor_id', 'location', 'latitude', 'longitude')
     search_fields = ('sensor_id', 'location')
 
+import csv
+from django.http import HttpResponse
+
+def export_waterleveldata_as_csv(modeladmin, request, queryset):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename=water_level_data.csv'
+
+    writer = csv.writer(response)
+    writer.writerow(['Rig', 'Level', 'Temperature', 'Humidity', 'Timestamp', 'Latitude', 'Longitude'])
+
+    for obj in queryset:
+        writer.writerow([
+            obj.rig.sensor_id,
+            obj.level,
+            obj.temperature,
+            obj.humidity,
+            obj.timestamp,
+            obj.latitude,
+            obj.longitude
+        ])
+
+    return response
+
+export_waterleveldata_as_csv.short_description = "Export Selected Water Level Data to CSV"
+
 
 @admin.register(WaterLevelData)
 class WaterLevelDataAdmin(admin.ModelAdmin):
