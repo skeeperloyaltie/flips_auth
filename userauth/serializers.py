@@ -14,7 +14,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = (
             'phone_number', 'category', 'bio', 'profile_picture',
-            'subscription_status', 'subscription_level', 'billing_address',
+            'subscription_status', 'billing_address',
             'birthday', 'subscription_plan', 'expiry_date',
             'privacy_policy_accepted'
         )  # Removed 'privacy_policy_accepted_date' as it's not in UserProfile model
