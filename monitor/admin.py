@@ -46,7 +46,8 @@ class WaterLevelDataAdmin(admin.ModelAdmin):
     list_display = ('rig', 'level', 'temperature', 'humidity', 'get_local_timestamp')
     search_fields = ('rig__sensor_id',)
     list_filter = ('timestamp',)
-    ordering = ('-timestamp',)  # Order by timestamp descending
+    ordering = ('-timestamp',)
+    actions = [export_waterleveldata_as_csv]  # 👈 Add this line
 
     def get_local_timestamp(self, obj):
         return localtime(obj.timestamp).strftime('%Y-%m-%d %H:%M:%S %Z')
