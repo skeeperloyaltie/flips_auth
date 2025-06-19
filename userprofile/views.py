@@ -16,7 +16,38 @@ from django.core.mail import send_mail
 import logging
 
 # Set up logging
+# Set up logging
 logger = logging.getLogger(__name__)
+
+class HealthCheckView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        try:
+            # Check database connectivity by executing a simple query
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+                result = cursor.fetchone()
+                if result[0] != 1:
+                    logger.error("Database health check failed: Invalid query result")
+                    return Response(
+                        {"status": "error", "message": "Database check failed"},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
+                    )
+
+            # Log successful health check
+            logger.debug("Health check successful: Server and database are operational")
+            return Response(
+                {"status": "ok", "message": "Server and database are healthy"},
+                status=status.HTTP_200_OK
+            )
+
+        except Exception as e:
+            logger.error(f"Health check failed: {str(e)}")
+            return Response(
+                {"status": "error", "message": f"Health check failed: {str(e)}"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
 
 class UserProfileView(APIView):
     permission_classes = [permissions.IsAuthenticated]
